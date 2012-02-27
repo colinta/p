@@ -4,10 +4,20 @@ function p () {
 
   if [[ -n "$1" && "${1:0:2}" = "--" ]]; then
     cmd="__p_${1:2}"
+    if [[ -z `type -t $cmd` ]]; then
+      echo "Unknown command \"p $1\"" >&2
+      return 1
+    fi
+
     $cmd "${@:2}"
     return $?
   elif [[ -n "$1" && "${1:0:1}" = "-" ]]; then
     cmd="__p_${1:1}"
+    if [[ -z `type -t $cmd` ]]; then
+      echo "Unknown command \"p $1\"" >&2
+      return 1
+    fi
+
     $cmd "${@:2}"
     return $?
   elif [[ -n "$@" ]]; then
