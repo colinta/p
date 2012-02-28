@@ -1,4 +1,4 @@
-if [[ -z P_PASSWORDS_FILE ]]; then
+if [[ -z $P_PASSWORDS_FILE ]]; then
   P_PASSWORDS_FILE=~/.p_passwords
 fi
 
