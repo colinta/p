@@ -66,22 +66,21 @@ function __p_show {
       echo -n "$password" | pbcopy
       echo -e '\033[1mThe password is in the clipboard\033[0m'
       echo -n 'Press enter to clear the clipboard, or ctrl+c to abort...'
-      read bar_i
+      read
       echo -n "$clipboard" | pbcopy
+    elif [[ -n `type -t xsel` ]]; then
+      local clipboard=$(xsel -o)
+      echo -n "$password" | xsel
+      echo -e '\033[1mThe password is in the clipboard\033[0m'
+      echo -n 'Press enter to clear the clipboard, or ctrl+c to abort...'
+      read
+      echo -n "$clipboard" | xsel
     else
-      local savepos="\033[s"
-      local undopos="\033[u"
+      echo -e '\033[1mThe password will be displayed in the clear\033[0m'
+      echo -n 'Press enter to continue, or ctrl+c to abort...'
+      read
       echo -n -e "$savepos"
       echo "$password"
-      echo -n 'Press enter to clear the clipboard, or ctrl+c to abort...'
-      read bar_i
-      echo -n -e "$undopos"
-      local len=${#password}
-      local i
-      for (( i = 0; i <= $len; ++i )); do
-        echo -n ' '
-      done
-      echo -n -e "$undopos"
     fi
 
   else
