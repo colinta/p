@@ -1,8 +1,11 @@
  p.sh — Password manager
 =========================
 
-This little bash script stores and retrieves passwords to a ~/.p_passwords file.
+This little bash script stores and retrieves passwords to an encrypted passwords file.
 You can add, remove, and show a single password, or list all of them.
+
+The default location is ~/.p_passwords, but this can be changed by setting P_PASSWORDS_FILE
+before loading p.sh.
 
 Commands
 --------
@@ -50,6 +53,6 @@ Commands
 * `p --remove` — Removes an entry.  This requires the entire file to be re-encrypted.
   alias: `p -r`
 
-* `p --all` — displays the ~/.p_passwords file.
+* `p --all` — displays the P_PASSWORDS_FILE.
 
-* **CAREFUL** `p --set` — writes stdin to the ~/.p_passwords file.  This resets the passwords file, so DON'T USE THIS COMMAND! :-)
+* **CAREFUL** `p --set` — writes stdin to the P_PASSWORDS_FILE.  This resets the passwords file, so DON'T USE THIS COMMAND! :-)

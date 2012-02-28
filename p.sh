@@ -1,6 +1,13 @@
+if [[ -z P_PASSWORDS_FILE ]]; then
+  P_PASSWORDS_FILE=~/.p_passwords
+fi
 
 function p () {
   local cmd
+
+  if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
+    echo -n "P_PASSWORDS" > $P_PASSWORDS_FILE
+  fi
 
   if [[ -n "$1" && "${1:0:2}" = "--" ]]; then
     cmd="__p_${1:2}"
@@ -51,7 +58,7 @@ function __p_show {
   escaped_name="$1"
   escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
   escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-  password=$(openssl enc -d -des3 -a -salt -in ~/.p_passwords | grep "^$escaped_name|||")
+  password=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep "^$escaped_name|||")
 
   bar_i=$(indexof "$password" '|||')
 
@@ -112,7 +119,7 @@ function __p_add {
   bar_i=$(indexof "$password" '|||')
 
   if [[ $bar_i -gt 0 ]]; then
-    echo 'Password cannot contain "|||".  It is used delimit "name|||password" in ~/.p_passwords'
+    echo 'Password cannot contain "|||".  It is used delimit "name|||password" in '"$P_PASSWORDS_FILE"
     return 1
   fi
 
@@ -123,14 +130,14 @@ function __p_add {
   escaped_name="$name"
   escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
   escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-  passwords=$(openssl enc -d -des3 -a -salt -in ~/.p_passwords | grep -v "^$escaped_name|||")
+  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep -v "^$escaped_name|||")
 
   # remove final newline if it exists
   passwords="${passwords%%$nl}"
   # and add it right back, along with the new password
   passwords="$passwords$nl$name|||$password$nl"
 
-  echo -n "$passwords" | openssl enc -des3 -a -salt -out ~/.p_passwords
+  echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
 }
 
 function __p_a {
@@ -152,8 +159,8 @@ function __p_remove {
   escaped_name="$name"
   escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
   escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-  passwords=$(openssl enc -d -des3 -a -salt -in ~/.p_passwords | grep -v "^$escaped_name|||")
-  echo -n "$passwords" | openssl enc -des3 -a -salt -out ~/.p_passwords
+  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep -v "^$escaped_name|||")
+  echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
 }
 
 function __p_r {
@@ -162,18 +169,18 @@ function __p_r {
 
 
 function __p_redo {
-  passwords=$(openssl enc -d -des3 -a -salt -in ~/.p_passwords)
+  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE")
   if [[ $? -eq 0 ]]; then
-    echo -n "$passwords" | openssl enc -des3 -a -salt -out ~/.p_passwords
+    echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
   fi
 }
 
 
 function __p_all {
-  openssl enc -d -des3 -a -salt -in ~/.p_passwords
+  openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE"
 }
 
 
 function __p_set {
-  openssl enc -des3 -a -salt -out ~/.p_passwords
+  openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
 }
