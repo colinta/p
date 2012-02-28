@@ -72,7 +72,7 @@ function __p_show {
       local savepos="\033[s"
       local undopos="\033[u"
       echo -n -e "$savepos"
-      echo -n "$password"
+      echo "$password"
       echo -n 'Press enter to clear the clipboard, or ctrl+c to abort...'
       read bar_i
       echo -n -e "$undopos"
@@ -95,8 +95,7 @@ function __p_add {
   local escaped_name
   local password
   local passwords
-  local nl="
-"
+  local nl=$'\n'
   if [[ -z $name ]]; then
     echo -n "What is the name?" >&2
     read name
