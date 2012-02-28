@@ -5,10 +5,6 @@ fi
 function p () {
   local cmd
 
-  if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
-    echo -n "P_PASSWORDS" > $P_PASSWORDS_FILE
-  fi
-
   if [[ -n "$1" && "${1:0:2}" = "--" ]]; then
     cmd="__p_${1:2}"
     if [[ -z `type -t $cmd` ]]; then
@@ -54,6 +50,11 @@ function __p_show {
   local password
   local escaped_name
   local bar_i
+
+  if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
+    echo "You have not stored any passwords" >&2
+    return 1
+  fi
 
   escaped_name="$1"
   escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
@@ -123,21 +124,26 @@ function __p_add {
     return 1
   fi
 
-  echo 'You will be asked for your password three times.'
-  echo 'Once to decrypt, and twice to re-encrpt.'
+  if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
+    passwords="$name|||$password$nl"
+    echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
+  else
+    echo 'You will be asked for your password three times.'
+    echo 'Once to decrypt, and twice to re-encrpt.'
 
-  # this command also removes the name, if it is in the file.
-  escaped_name="$name"
-  escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
-  escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep -v "^$escaped_name|||")
+    # this command also removes the name, if it is in the file.
+    escaped_name="$name"
+    escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
+    escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
+    passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep -v "^$escaped_name|||")
 
-  # remove final newline if it exists
-  passwords="${passwords%%$nl}"
-  # and add it right back, along with the new password
-  passwords="$passwords$nl$name|||$password$nl"
+    # remove final newline if it exists
+    passwords="${passwords%%$nl}"
+    # and add it right back, along with the new password
+    passwords="$passwords$nl$name|||$password$nl"
 
-  echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
+    echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
+  fi
 }
 
 function __p_a {
@@ -149,6 +155,11 @@ function __p_remove {
   local password
   local bar_i
   local name="$1"
+
+  if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
+    echo "You have not stored any passwords" >&2
+    return 1
+  fi
 
   if [[ -z $name ]]; then
     echo -n "What is the name?" >&2
@@ -169,6 +180,11 @@ function __p_r {
 
 
 function __p_redo {
+  if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
+    echo "You have not stored any passwords" >&2
+    return 1
+  fi
+
   passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE")
   if [[ $? -eq 0 ]]; then
     echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
@@ -177,6 +193,11 @@ function __p_redo {
 
 
 function __p_all {
+  if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
+    echo "You have not stored any passwords" >&2
+    return 1
+  fi
+
   openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE"
 }
 
