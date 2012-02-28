@@ -96,6 +96,7 @@ function __p_add {
   local password
   local passwords
   local nl=$'\n'
+
   if [[ -z $name ]]; then
     echo -n "What is the name?" >&2
     read name
