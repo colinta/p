@@ -53,6 +53,8 @@ Commands
 * `p --remove` — Removes an entry.  This requires the entire file to be re-encrypted.
   alias: `p -r`
 
+* `p --recrypt` — Decrypts and encrypts.  So you can change the filename.
+
 * `p --all` — displays the P_PASSWORDS_FILE.
 
 * **CAREFUL** `p --set` — writes stdin to the P_PASSWORDS_FILE.  This resets the passwords file, so DON'T USE THIS COMMAND! :-)

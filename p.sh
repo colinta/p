@@ -23,8 +23,8 @@ function p () {
 
     $cmd "${@:2}"
     return $?
-  elif [[ -n "$@" ]]; then
-    __p_show "$@"
+  elif [[ -n "$1" ]]; then
+    __p_show "$1"
   else
     __p_help
   fi
@@ -33,21 +33,24 @@ function p () {
 function __p_help() {
   echo "Commands:"
   echo ""
-  echo "--help, -h    Show this message."
-  echo "--show \$1    Show the password for \$1.  Default action when \$1 is given."
-  echo "--add \$name  Add entry \$name.  You will be prompted for the password."
-  echo "--redo        Decrypts and encrypts.  Useful if you want to change the password."
-  echo "--all         Shows the entire file (to STDOUT)."
-  echo "--set         Sets the passwords file (from STDIN)."
+  echo "--help, -h        Show this message."
+  echo "--show \$1        Show the password for \$1.  Default action when \$1 is given."
+  echo "--add \$name      Add entry \$name.  You will be prompted for the password."
+  echo "--recrypt         Decrypts and encrypts."
+  echo "--all             Shows the entire file (to STDOUT)."
+  echo "--set             Sets the passwords file (from STDIN)."
+  echo "--remove \$name   Removes an entry"
+  echo "--backup [\$ext]  Copies to a backup file.  [default: backup]"
 }
 
 function __p_h {
-  __p_help "$@"
+  __p_help
 }
 
 
 function __p_show {
   local password
+  local passwords
   local escaped_name
   local bar_i
 
@@ -57,9 +60,14 @@ function __p_show {
   fi
 
   escaped_name="$1"
-  escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
+  escaped_name="${escaped_name//\'/\\\'}"
   escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-  password=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep "^$escaped_name|||")
+  passwords=$(echo "$password" | openssl enc -d -des3 -a -salt)
+  if [[ $? -ne 0 ]]; then
+    echo "wrong password" >&2
+    return 1
+  fi
+  password=$(echo "$passwords" | grep "^$escaped_name|||")
 
   bar_i=$(indexof "$password" '|||')
 
@@ -131,11 +139,18 @@ function __p_add {
     echo 'You will be asked for your password three times.'
     echo 'Once to decrypt, and twice to re-encrpt.'
 
+
+    __p_backup ".auto"
     # this command also removes the name, if it is in the file.
     escaped_name="$name"
-    escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
+    escaped_name="${escaped_name//\'/\\\'}"
     escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-    passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep -v "^$escaped_name|||")
+    passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE")
+    if [[ $? -ne 0 ]]; then
+      echo "wrong password" >&2
+      return 1
+    fi
+    passwords=$(echo "$passwords" | grep -v "^$escaped_name|||")
 
     # remove final newline if it exists
     passwords="${passwords%%$nl}"
@@ -168,9 +183,14 @@ function __p_remove {
 
   # this command removes the name, if it is in the file.
   escaped_name="$name"
-  escaped_name="${escaped_name//"'"/\'}"  # why, bash, WHY?
+  escaped_name="${escaped_name//\'/\\\'}"
   escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE" | grep -v "^$escaped_name|||")
+  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE")
+  if [[ $? -ne 0 ]]; then
+    echo "wrong password" >&2
+    return 1
+  fi
+  passwords=$(echo "$passwords" | grep -v "^$escaped_name|||")
   echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
 }
 
@@ -179,16 +199,18 @@ function __p_r {
 }
 
 
-function __p_redo {
+function __p_recrypt {
   if [[ ! -f "$P_PASSWORDS_FILE" ]]; then
     echo "You have not stored any passwords" >&2
     return 1
   fi
 
   passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE")
-  if [[ $? -eq 0 ]]; then
-    echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
+  if [[ $? -ne 0 ]]; then
+    echo "wrong password" >&2
+    return 1
   fi
+  echo -n "$passwords" | openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
 }
 
 
@@ -198,10 +220,24 @@ function __p_all {
     return 1
   fi
 
-  openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE"
+  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE")
+  if [[ $? -ne 0 ]]; then
+    echo "wrong password" >&2
+    return 1
+  fi
+  echo -n "$passwords"
 }
 
 
 function __p_set {
   openssl enc -des3 -a -salt -out "$P_PASSWORDS_FILE"
+}
+
+
+function __p_backup {
+  local backup="$P_PASSWORDS_FILE.backup"
+  if [[ -n "$2" ]]; then
+    backup="$P_PASSWORDS_FILE.$2"
+  fi
+  cp "$P_PASSWORDS_FILE" "$backup"
 }
