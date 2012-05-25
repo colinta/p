@@ -62,7 +62,7 @@ function __p_show {
   escaped_name="$1"
   escaped_name="${escaped_name//\'/\\\'}"
   escaped_name=$(python -c "import re ; import sys ; sys.stdout.write(re.escape('$escaped_name'))")
-  passwords=$(echo "$password" | openssl enc -d -des3 -a -salt)
+  passwords=$(openssl enc -d -des3 -a -salt -in "$P_PASSWORDS_FILE")
   if [[ $? -ne 0 ]]; then
     echo "wrong password" >&2
     return 1
