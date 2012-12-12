@@ -29,6 +29,7 @@ Commands
   Password:
   The password is in the clipboard
   Press enter to clear the clipboard, or ctrl+c to abort...
+  $
   ```
 
   ...press enter...
@@ -41,6 +42,7 @@ Commands
   The password for "test":
   Master:
   Verify:
+  $
   ```
 
   If the password already exists in the database, you'll need the old password to replace it
@@ -51,6 +53,7 @@ Commands
   Old:
   Master:
   Verify:
+  $
   ```
 
 * `p --remove` — Removes an entry.  You'll be asked for the password.
@@ -59,4 +62,5 @@ Commands
   ```shell
   $ p --remove bank
   Old:
+  $
   ```
