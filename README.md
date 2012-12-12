@@ -64,3 +64,13 @@ Commands
   Old:
   $
   ```
+
+* `p --list` - Lists the names, does not display any passwords.
+  alias `p -l`
+
+  ```shell
+  $ p --list
+  bank
+  test
+  $
+  ```

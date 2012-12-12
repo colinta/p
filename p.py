@@ -169,6 +169,13 @@ def p_remove():
 p_r = p_remove
 
 
+def p_list():
+    cursor.execute('SELECT name FROM passwords')
+    for (result,) in cursor.fetchall():
+        print(result)
+p_l = p_list
+
+
 ##|
 ##|  Run the command
 ##|
