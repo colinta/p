@@ -1,60 +1,62 @@
- p.sh — Password manager
-=========================
+ p — Password manager
+======================
 
-This little bash script stores and retrieves passwords to an encrypted passwords file.
-You can add, remove, and show a single password, or list all of them.
+###### Version 2.0!  Rewritten in Python, using sqlite as the data store.
 
-The default location is ~/.p_passwords, but this can be changed by setting P_PASSWORDS_FILE
-before loading p.sh.
+You'll need the PyCrypto package:
+
+    pip install pycrypto
+
+
+This little python script stores and retrieves encrypted passwords to a sqlite file.
+You can add, remove, and show a single password.
+
+"show" in this case, though, means "copy to clipboard".  The password is never
+actually *shown*.  The downside - if you use a clipboard manager, it will be
+able to see your passwords.  I'd recommend against using this in that case.
+
+The default location is ~/.p_passwords.sql, but this can be changed by setting
+the environment variable P_PASSWORDS_FILE before loading p.
 
 Commands
 --------
 
 * `p [entry]` — displays the password for the entry, waits, and deletes the password after you press enter
+  alias: `p --show`
 
   ```shell
   $ p bank
-  enter des-ede3-cbc decryption password:
-  abcd1234
+  Password:
+  The password is in the clipboard
+  Press enter to clear the clipboard, or ctrl+c to abort...
   ```
 
   ...press enter...
 
-  ```shell
-  $ p bank
-  enter des-ede3-cbc decryption password:
-  $ # the password gets removed (I'm using bash's \033[s and \033[u escape sequences)
-  ```
-
-  If you want the password to "hang around", you can pipe the output.
-
-  ```shell
-  $ p bank | grep .
-  enter des-ede3-cbc decryption password:
-  abcd1234
-  $
-  ```
-
-* `p --add [entry]` — Adds a new entry.  This requires the entire file to be re-encrypted.  Anyone know a way around that?
+* `p --add [entry]` — Adds a new entry.
   alias: `p -a`
 
   ```shell
   $ p --add bank
-  Name is "test".  And the password? [not shown]
-  You will be asked for your password three times.
-  Once to decrypt, and twice to re-encrpt.
-  enter des-ede3-cbc decryption password:
-  enter des-ede3-cbc encryption password:
-  Verifying - enter des-ede3-cbc encryption password:
+  The password for "test":
+  Master:
+  Verify:
   ```
 
-  I would love to somehow append the encrypted contents.
+  If the password already exists in the database, you'll need the old password to replace it
 
-* `p --remove` — Removes an entry.  This requires the entire file to be re-encrypted.
+  ```shell
+  $ p --add bank
+  The password for "test":
+  Old:
+  Master:
+  Verify:
+  ```
+
+* `p --remove` — Removes an entry.  You'll be asked for the password.
   alias: `p -r`
 
-* `p --recrypt` — Decrypts and encrypts.  So you can change the filename.
-
-* `p --all` — displays the P_PASSWORDS_FILE.
-
-* **CAREFUL** `p --set` — writes stdin to the P_PASSWORDS_FILE.  This resets the passwords file, so DON'T USE THIS COMMAND! :-)
+  ```shell
+  $ p --remove bank
+  Old:
+  ```
