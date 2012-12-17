@@ -74,3 +74,18 @@ Commands
   test
   $
   ```
+
+Stdout
+------
+
+If the terminal is being redirected, the `--show` command will print the
+password.  This is useful when you use `p` in conjunction with, say, the `gist`
+command:
+
+    $ git config --global github.password '!p github'
+    $ echo 'p varname.nil?' | gist -t rb
+    Password:
+    https://gist.github.com/4322161
+
+Uses `sys.stdout.isatty()` method to determine whether to prompt or output the
+password.

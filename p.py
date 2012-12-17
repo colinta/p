@@ -103,20 +103,23 @@ def p_show():
         password = getpass.getpass()
         plain = decrypt(ciphertext, password, iv)
 
-        pbpaste = os.popen('pbpaste', 'r')
-        old_board = pbpaste.read()
-        pbpaste.close()
+        if sys.stdout.isatty():
+            pbpaste = os.popen('pbpaste', 'r')
+            old_board = pbpaste.read()
+            pbpaste.close()
 
-        pbcopy = os.popen('pbcopy', 'w')
-        pbcopy.write(plain)
-        pbcopy.close()
-        sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
-        sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
-        sys.stdin.readline()
+            pbcopy = os.popen('pbcopy', 'w')
+            pbcopy.write(plain)
+            pbcopy.close()
+            sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
+            sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
+            sys.stdin.readline()
 
-        pbcopy = os.popen('pbcopy', 'w')
-        pbcopy.write(old_board)
-        pbcopy.close()
+            pbcopy = os.popen('pbcopy', 'w')
+            pbcopy.write(old_board)
+            pbcopy.close()
+        else:
+            sys.stdout.write(plain)
     else:
         error_and_exit('"{0}" was not found'.format(name))
 
