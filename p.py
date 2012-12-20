@@ -212,6 +212,16 @@ def p_merge():
     merge_conn.commit()
 
 
+def p_check():
+    master = getpass.getpass('Master:')
+    cursor.execute('SELECT name, password, iv FROM passwords')
+    for (name, password, iv) in cursor.fetchall():
+        try:
+            decrypt(password, master, iv)
+        except ValueError:
+            print(name)
+
+
 ##|
 ##|  Run the command
 ##|
