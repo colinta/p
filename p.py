@@ -99,7 +99,6 @@ def p_show():
     if not name:
         p_help()
         error_and_exit('$name is a required field')
-        return
 
     cursor.execute('SELECT password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
@@ -136,7 +135,6 @@ def p_add():
     if not name:
         p_help()
         error_and_exit('$name is a required field')
-        return
 
     try:
         entry = args.pop(0)
@@ -165,7 +163,6 @@ def p_remove():
     if not name:
         p_help()
         error_and_exit('$name is a required field')
-        return
 
     cursor.execute('SELECT password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
