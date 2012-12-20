@@ -190,6 +190,28 @@ def p_list():
 p_l = p_list
 
 
+def p_merge():
+    file = args.pop(0)
+    if not file:
+        p_help()
+        error_and_exit('$file is a required field')
+
+    if not os.path.exists(file):
+        error_and_exit('Could not find {file}'.format(file=file))
+    merge_conn = get_connection(file)
+    merge_cursor = merge_conn.cursor()
+    merge_cursor.execute('SELECT name, password, iv FROM passwords')
+    for result in merge_cursor.fetchall():
+        name = result[0]
+        exists = cursor.execute('SELECT name FROM passwords WHERE name = ?', [name]).fetchone()
+        if not exists:
+            print("Adding {name}".format(name=name))
+            cursor.execute('INSERT INTO passwords (name, password, iv) VALUES (?, ?, ?)', result)
+
+    merge_cursor.close()
+    merge_conn.commit()
+
+
 ##|
 ##|  Run the command
 ##|
