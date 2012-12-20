@@ -145,8 +145,12 @@ def p_add():
     result = cursor.fetchone()
     if result:
         password = getpass.getpass('Old:')
-        if not decrypt(result[0], password, result[1]):
-            error_and_exit('Old password is incorrect')
+        try:
+            if not decrypt(result[0], password, result[1]):
+                error_and_exit('Old password is incorrect')
+        except ValueError:
+            pass
+
     password = getpass.getpass('Master:')
     password_verify = getpass.getpass('Verify:')
 
@@ -168,8 +172,11 @@ def p_remove():
     result = cursor.fetchone()
     if result:
         password = getpass.getpass('Old:')
-        if not decrypt(result[0], password, result[1]):
-            error_and_exit('Old password is incorrect')
+        try:
+            if not decrypt(result[0], password, result[1]):
+                error_and_exit('Old password is incorrect')
+        except ValueError:
+            pass
         cursor.execute('DELETE FROM passwords WHERE name = ?', [name])
     else:
         error_and_exit('Password "{0}" was not found'.format(name))
