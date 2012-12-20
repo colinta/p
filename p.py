@@ -2,11 +2,17 @@
 """A password store. Written in python using sqlite.
 
 [--show] $name    Show the password for $name.  Default command.
---help, -h        Show this message.
+--help            Show this message.
+-h                alias for --help
 --add $name       Add entry $name.  You will be prompted for the password. Existing entries will be replaced
+-a                alias for --add
 --remove $name    Removes an entry
---backup [$name]  Copies to a backup file.  [default: backup]
---all             Shows the entire file (to STDOUT).
+-r $name          alias for --remove
+--list            Lists all the entry names (no passwords are shown)
+-l                alias for --list
+--merge [$file]   Merges entries from another p_password.sql store
+-m                alias for --merge
+--check           Tries to decrypt entries using the "Master" password. Any entries that fail are printed to the screen
 """
 import sqlite3
 import os
