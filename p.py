@@ -185,8 +185,8 @@ p_r = p_remove
 
 def p_list():
     cursor.execute('SELECT name FROM passwords')
-    for (result,) in cursor.fetchall():
-        print(result)
+    for (name,) in cursor.fetchall():
+        print(name)
 p_l = p_list
 
 
