@@ -24,15 +24,22 @@ except ImportError:
     sys.exit(1)
 
 
-db = os.environ.get('P_PASSWORDS_FILE')
-if not db:
-    db = os.path.join(os.environ['HOME'], '.p_passwords')
-db += '.sql'
+def get_connection(db):
+    conn = sqlite3.connect(db)
+    conn.text_factory = str
+    return conn
 
-conn = sqlite3.connect(db)
-conn.text_factory = str
+
+def get_default_connection():
+    db = os.environ.get('P_PASSWORDS_FILE')
+    if not db:
+        db = os.path.join(os.environ['HOME'], '.p_passwords')
+    db += '.sql'
+    return get_connection(db)
+
+
+conn = get_default_connection()
 cursor = conn.cursor()
-
 cursor.execute('''CREATE TABLE
                     IF NOT EXISTS
                     passwords
