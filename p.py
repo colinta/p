@@ -225,13 +225,14 @@ def p_check():
 ##|
 ##|  Run the command
 ##|
-command = locals().get('p_' + command_name)
-if not command:
-    command = error_and_exit('Unknown command "{0}"'.format(command_name))
-else:
-    try:
-        command()
-    except KeyboardInterrupt:
-        sys.stderr.write("Aborting\n")
-    cursor.close()
-    conn.commit()
+if __name__ == "__main__":
+    command = locals().get('p_' + command_name)
+    if not command:
+        command = error_and_exit('Unknown command "{0}"'.format(command_name))
+    else:
+        try:
+            command()
+        except KeyboardInterrupt:
+            sys.stderr.write("Aborting\n")
+        cursor.close()
+        conn.commit()
