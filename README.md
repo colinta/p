@@ -13,15 +13,23 @@ You can add, remove, and show a single password.
 
 "show" in this case, though, means "copy to clipboard".  The password is never
 actually *shown*.  The downside - if you use a clipboard manager, it will be
-able to see your passwords.  I'd recommend against using this in that case.
+able to see your passwords.
 
-The default location is ~/.p_passwords.sql, but this can be changed by setting
-the environment variable P_PASSWORDS_FILE before loading p.
+This is designed to run on Mac OS X, and uses the `pbcopy` and `pbpaste`
+commands. If you would like to adapt this to use `xsel`, please fork and
+contribute your patch!  <https://github.com/colinta/p>
+
+The default password file is ~/.p_passwords.sql, but this can be changed by
+setting the environment variable P_PASSWORDS_FILE before loading p.
 
 Commands
 --------
 
-* `p [entry]` — displays the password for the entry, waits, and deletes the password after you press enter
+* `p --help` or just `p` - Display the help screen
+
+* `p $entry` — displays the password for the entry, waits, and deletes the
+  password after you press enter.
+
   alias: `p --show`
 
   ```shell
@@ -34,7 +42,8 @@ Commands
 
   ...press enter...
 
-* `p --add [entry]` — Adds a new entry.
+* `p --add $entry` — Adds a new entry.
+
   alias: `p -a`
 
   ```shell
@@ -45,7 +54,8 @@ Commands
   $
   ```
 
-  If the password already exists in the database, you'll need the old password to replace it
+  If the password already exists in the database, you'll need the old password
+  to replace it
 
   ```shell
   $ p --add bank
@@ -57,6 +67,7 @@ Commands
   ```
 
 * `p --remove` — Removes an entry.  You'll be asked for the password.
+
   alias: `p -r`
 
   ```shell
@@ -66,6 +77,7 @@ Commands
   ```
 
 * `p --list` - Lists the names, does not display any passwords.
+
   alias `p -l`
 
   ```shell
@@ -74,6 +86,26 @@ Commands
   test
   $
   ```
+
+* `p --user $entry` - Adds a username to an existing entry.
+
+  alias `p -u`
+
+* `p --file` - Shows the password file location
+
+  alias `p -f`
+
+* `p --merge $file` - Merges entries from another password file. Useful when you
+  store your passwords in git, and there's a conflict.
+
+* `p --check` - If you use the same "master" password for all your entries, this
+  will make sure that the password can decrypt all the entries.  Any that don't
+  decrypt properly will be displayed.
+
+* `p --backup $file` - Copies the password file to a backup.  Will not overwrite
+  an existing backup file.
+
+  alias `p -b`
 
 Stdout
 ------
