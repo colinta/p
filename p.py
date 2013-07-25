@@ -10,8 +10,8 @@ contribute your patch!  https://github.com/colinta/p
 --add, -a $name      Add entry $name.  You will be prompted for the password. Existing entries will be replaced
 --user, -u $name     Add a username to the entry $name.  You will be prompted for the username.
 --remove, -r $name   Removes an entry
---list, -l           Lists all the entry names (no passwords are shown)
---file, -f           Show the password file being used
+--list, l            Lists all the entry names (no passwords are shown)
+--file, f            Show the password file being used
 --merge, -m [$file]  Merges entries from another p_password.sql store
 --check              Tries to decrypt entries using the "Master" password. Any entries that fail are printed to the screen
 --backup, -b $file   Make a backup of the password store
@@ -51,6 +51,16 @@ def get_default_connection():
     return get_connection(get_passwords_file())
 
 
+def generate_password(length=20):
+    chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`-=~!@#$%^&*()_+[]\{}|;:",./<>?'
+    entropy = random.SystemRandom()
+    password = ''
+    while length:
+        password += entropy.choice(chars)
+        length -= 1
+    return password
+
+
 def migrate(migrate_cursor):
     migrate_cursor.execute('''CREATE TABLE
                         IF NOT EXISTS
@@ -82,21 +92,6 @@ cursor = conn.cursor()
 migrate(cursor)
 
 
-if len(sys.argv) == 1:
-    command_name = 'help'
-    args = []
-else:
-    if sys.argv[1][0:2] == '--':
-        command_name = sys.argv[1][2:]
-        args = sys.argv[2:]
-    elif sys.argv[1][0] == '-':
-        command_name = sys.argv[1][1:]
-        args = sys.argv[2:]
-    else:
-        command_name = 'show'
-        args = sys.argv[1:]
-
-
 def encrypt(entry, password):
     iv = ''.join(chr(random.randint(0, 0xFF)) for i in range(16))
     key = hashlib.sha256(password).digest()
@@ -122,12 +117,24 @@ def error_and_exit(message):
     sys.exit(1)
 
 
-def p_help():
+def p_help(args):
     print(__doc__)
 p_h = p_help
 
 
-def p_show():
+def pbcopy(content):
+    sock = os.popen('pbcopy', 'w')
+    sock.write(content)
+    sock.close()
+
+
+def pbpaste():
+    sock = os.popen('pbpaste', 'r')
+    old_board = sock.read()
+    sock.close()
+    return old_board
+
+def p_show(args):
     name = args.pop()
     if not name:
         p_help()
@@ -149,27 +156,36 @@ def p_show():
                 sys.stderr.write(username)
                 sys.stderr.write("\n")
 
-            pbpaste = os.popen('pbpaste', 'r')
-            old_board = pbpaste.read()
-            pbpaste.close()
+            old_board = pbpaste()
+            pbcopy(plain)
 
-            pbcopy = os.popen('pbcopy', 'w')
-            pbcopy.write(plain)
-            pbcopy.close()
             sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
             sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
             sys.stdin.readline()
 
-            pbcopy = os.popen('pbcopy', 'w')
-            pbcopy.write(old_board)
-            pbcopy.close()
+            pbcopy(old_board)
         else:
             sys.stdout.write(plain)
     else:
-        error_and_exit('"{0}" was not found'.format(name))
+        sys.stdout.write('"{0}" was not found, should I make an entry? [y]: '.format(name))
+        should_add = sys.stdin.readline()[:-1]  # strip \n
+        if should_add == '' or should_add == 'y':
+            plain = generate_password()
+            p_add([name], plain)
+
+            old_board = pbpaste()
+            pbcopy(plain)
+
+            sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
+            sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
+            sys.stdin.readline()
+
+            pbcopy(old_board)
+        else:
+            error_and_exit('aborting'.format(name))
 
 
-def p_add():
+def p_add(args, entry=None):
     try:
         name = args.pop(0)
     except IndexError:
@@ -179,7 +195,8 @@ def p_add():
         p_help()
         error_and_exit('$name is a required field')
 
-    entry = getpass.getpass('The password for "{0}": '.format(name))
+    if not entry:
+        entry = getpass.getpass('The password for "{0}": '.format(name))
 
     cursor.execute('SELECT password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
@@ -207,7 +224,7 @@ def p_add():
 p_a = p_add
 
 
-def p_remove():
+def p_remove(args):
     try:
         name = args.pop(0)
     except IndexError:
@@ -232,24 +249,26 @@ def p_remove():
 p_r = p_remove
 
 
-def p_list():
-    sys.stdout.write("[\n")
+def p_list(args):
     cursor.execute('SELECT name, username FROM passwords')
-    is_first = True
-    for (name, username) in cursor.fetchall():
-        if not is_first:
-            sys.stdout.write(",\n")
-        sys.stdout.write("  ")
-        dump = {'name': name}
+    rows = []
+    name_max = 8
+    for row in cursor.fetchall():
+        name_max = max(name_max, len(row[0]))
+        rows.append(row)
+    sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username\n')
+    sys.stdout.write('-' * name_max + '-+----------\n')
+    for (name, username) in rows:
+        sys.stdout.write(name)
+        sys.stdout.write(' ' * (name_max - len(name)) + ' |')
         if username:
-            dump['username'] = username
-        sys.stdout.write(json.dumps(dump))
-        is_first = False
-    sys.stdout.write("\n]\n")
+            sys.stdout.write(' ')
+            sys.stdout.write(username)
+        sys.stdout.write("\n")
 p_l = p_list
 
 
-def p_merge():
+def p_merge(args):
     try:
         file = args.pop(0)
     except IndexError:
@@ -280,7 +299,7 @@ def p_merge():
 p_m = p_merge
 
 
-def p_check():
+def p_check(args):
     master = getpass.getpass('Master: ')
     cursor.execute('SELECT name, password, iv FROM passwords')
     for (name, password, iv) in cursor.fetchall():
@@ -290,7 +309,7 @@ def p_check():
             print(name)
 
 
-def p_backup():
+def p_backup(args):
     try:
         file = args.pop(0)
     except IndexError:
@@ -308,7 +327,7 @@ def p_backup():
 p_b = p_backup
 
 
-def p_user():
+def p_user(args):
     try:
         name = args.pop(0)
     except IndexError:
@@ -329,7 +348,7 @@ def p_user():
 p_u = p_user
 
 
-def p_file():
+def p_file(args):
     print(get_passwords_file())
 p_f = p_file
 
@@ -338,12 +357,26 @@ p_f = p_file
 ##|  Run the command
 ##|
 if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        command_name = 'help'
+        args = []
+    else:
+        if sys.argv[1][0:2] == '--':
+            command_name = sys.argv[1][2:]
+            args = sys.argv[2:]
+        elif sys.argv[1][0] == '-':
+            command_name = sys.argv[1][1:]
+            args = sys.argv[2:]
+        else:
+            command_name = 'show'
+            args = sys.argv[1:]
+
     command = locals().get('p_' + command_name)
     if not command:
         command = error_and_exit('Unknown command "{0}"'.format(command_name))
     else:
         try:
-            command()
+            command(args)
         except KeyboardInterrupt:
             sys.stderr.write("Aborting\n")
         cursor.close()
