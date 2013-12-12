@@ -151,17 +151,24 @@ def p_show(args):
         plain = decrypt(ciphertext, password, iv)
 
         if sys.stdout.isatty():
-            if username:
-                sys.stderr.write("\033[1mUsername:\033[0m ")
-                sys.stderr.write(username)
-                sys.stderr.write("\n")
-
             old_board = pbpaste()
             pbcopy(plain)
 
             sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
-            sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
+            if username:
+                sys.stderr.write('Press enter to show the username, or ctrl+c to abort...')
+            else:
+                sys.stderr.write('Press enter to restore the clipboard, or ctrl+c to abort...')
             sys.stdin.readline()
+
+            if username:
+                sys.stderr.write("\033[1mThe username is in the clipboard\033[0m\n")
+                sys.stderr.write("\033[1mUsername:\033[0m ")
+                sys.stderr.write(username)
+                sys.stderr.write("\n")
+                sys.stderr.write('Press enter to restore the clipboard, or ctrl+c to abort...')
+                pbcopy(username)
+                sys.stdin.readline()
 
             pbcopy(old_board)
         else:
