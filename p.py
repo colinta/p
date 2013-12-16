@@ -7,14 +7,19 @@ contribute your patch!  https://github.com/colinta/p
 
 [--show] $name       Show the password for $name.  Default command.
 --help, -h           Show this message.
---add, -a $name      Add entry $name.  You will be prompted for the password. Existing entries will be replaced
---user, -u $name     Add a username to the entry $name.  You will be prompted for the username.
+--add, -a $name      Add entry $name.  You will be prompted for the password.
+                     Existing entries will be replaced
+--user, -u $name     Add a username to the entry $name.  You will be prompted
+                     for the username.
 --remove, -r $name   Removes an entry
 --list, l            Lists all the entry names (no passwords are shown)
 --file, f            Show the password file being used
 --merge, -m [$file]  Merges entries from another p_password.sql store
---check              Tries to decrypt entries using the "Master" password. Any entries that fail are printed to the screen
+--check              Tries to decrypt entries using the "Master" password. Any
+                     entries that fail are printed to the screen
 --backup, -b $file   Make a backup of the password store
+--generate, --gen, -g $length $name
+                     Create a new entry
 """
 import sqlite3
 import os
