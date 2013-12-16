@@ -122,7 +122,7 @@ def error_and_exit(message):
     sys.exit(1)
 
 
-def p_help(args):
+def p_help(args=[]):
     print(__doc__)
 p_h = p_help
 
