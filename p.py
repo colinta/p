@@ -179,20 +179,43 @@ def p_show(args):
         sys.stdout.write('"{0}" was not found, should I make an entry? [y]: '.format(name))
         should_add = sys.stdin.readline()[:-1]  # strip \n
         if should_add == '' or should_add == 'y':
-            plain = generate_password()
-            p_add([name], plain)
-
-            old_board = pbpaste()
-            pbcopy(plain)
-
-            sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
-            sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
-            sys.stdin.readline()
-
-            pbcopy(old_board)
+            p_generate([20, name])
         else:
             error_and_exit('aborting'.format(name))
 
+
+def p_generate(args):
+    try:
+        length = args.pop(0)
+    except IndexError:
+        length = None
+
+    if not length:
+        p_help()
+        error_and_exit('$length is a required field')
+
+    try:
+        name = args.pop(0)
+    except IndexError:
+        name = None
+
+    if not name:
+        p_help()
+        error_and_exit('$name is a required field')
+
+    plain = generate_password()
+    p_add([name], plain)
+
+    old_board = pbpaste()
+    pbcopy(plain)
+
+    sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
+    sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
+    sys.stdin.readline()
+
+    pbcopy(old_board)
+p_g = p_generate
+p_gen = p_generate
 
 def p_add(args, entry=None):
     try:
