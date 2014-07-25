@@ -5,7 +5,9 @@ This is designed to run on Mac OS X, and uses the `pbcopy` and `pbpaste`
 commands. If you would like to adapt this to use `xsel`, please fork and
 contribute your patch!  https://github.com/colinta/p
 
-[--show] $name       Show the password for $name.  Default command.
+[--show] $name       Show the password for $name and the username if it's
+                     available.  Default command.
+--pass, -p $name     Show the password for $name, don't show the username.
 --help, -h           Show this message.
 --add, -a $name      Add entry $name.  You will be prompted for the password.
                      Existing entries will be replaced
@@ -141,7 +143,13 @@ def pbpaste():
     sock.close()
     return old_board
 
-def p_show(args):
+
+def p_pass(args):
+    p_show(args, show_username=False)
+p_p = p_pass
+
+
+def p_show(args, show_username=True):
     name = args.pop()
     if not name:
         p_help()
@@ -160,7 +168,7 @@ def p_show(args):
         if sys.stdout.isatty():
             old_board = pbpaste()
 
-            if username:
+            if show_username and username:
                 sys.stderr.write("\033[1mThe username is in the clipboard\033[0m\n")
                 sys.stderr.write("\033[1mUsername:\033[0m ")
                 sys.stderr.write(username)
