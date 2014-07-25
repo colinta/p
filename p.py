@@ -11,6 +11,8 @@ contribute your patch!  https://github.com/colinta/p
                      Existing entries will be replaced
 --user, -u $name     Add a username to the entry $name.  You will be prompted
                      for the username.
+--change, -c $name   Replaces an entry after copying the current password to the
+                     clipboard.
 --remove, -r $name   Removes an entry
 --list, l            Lists all the entry names (no passwords are shown)
 --file, f            Show the password file being used
@@ -18,8 +20,7 @@ contribute your patch!  https://github.com/colinta/p
 --check              Tries to decrypt entries using the "Master" password. Any
                      entries that fail are printed to the screen
 --backup, -b $file   Make a backup of the password store
---generate, --gen, -g $length $name
-                     Create a new entry
+--generate, -g $name Create a new entry
 """
 import sqlite3
 import os
@@ -56,7 +57,8 @@ def get_default_connection():
     return get_connection(get_passwords_file())
 
 
-def generate_password(length=20):
+def generate_password(args):
+    length = 20
     chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`-=~!@#$%^&*()_+[]\{}|;:",./<>?'
     entropy = random.SystemRandom()
     password = ''
@@ -109,12 +111,12 @@ def encrypt(entry, password):
 def decrypt(ciphertext, password, iv):
     key = hashlib.sha256(password).digest()
     decryptor = AES.new(key, AES.MODE_CBC, iv)
-    plain = decryptor.decrypt(ciphertext).rstrip(chr(0))
+    plaintext_password = decryptor.decrypt(ciphertext).rstrip(chr(0))
     char_regex = re.compile(r'[ -~]')
     is_char = lambda c: char_regex.match(c)
-    if any(not is_char(c) for c in plain):
-        return None
-    return plain
+    if any(not is_char(c) for c in plaintext_password):
+        error_and_exit('Wrong!')
+    return plaintext_password
 
 
 def error_and_exit(message):
@@ -153,7 +155,7 @@ def p_show(args):
         username = result[2]
 
         password = getpass.getpass()
-        plain = decrypt(ciphertext, password, iv)
+        plaintext_password = decrypt(ciphertext, password, iv)
 
         if sys.stdout.isatty():
             old_board = pbpaste()
@@ -169,31 +171,22 @@ def p_show(args):
 
             sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
             sys.stderr.write('Press enter to restore the clipboard, or ctrl+c to abort...')
-            pbcopy(plain)
+            pbcopy(plaintext_password)
             sys.stdin.readline()
 
             pbcopy(old_board)
         else:
-            sys.stdout.write(plain)
+            sys.stdout.write(plaintext_password)
     else:
         sys.stdout.write('"{0}" was not found, should I make an entry? [y]: '.format(name))
         should_add = sys.stdin.readline()[:-1]  # strip \n
         if should_add == '' or should_add == 'y':
-            p_generate([20, name])
+            p_generate([name])
         else:
             error_and_exit('aborting'.format(name))
 
 
 def p_generate(args):
-    try:
-        length = args.pop(0)
-    except IndexError:
-        length = None
-
-    if not length:
-        p_help()
-        error_and_exit('$length is a required field')
-
     try:
         name = args.pop(0)
     except IndexError:
@@ -203,11 +196,11 @@ def p_generate(args):
         p_help()
         error_and_exit('$name is a required field')
 
-    plain = generate_password()
-    p_add([name], plain)
+    plaintext_password = generate_password(args)
+    p_add([name], plaintext_password)
 
     old_board = pbpaste()
-    pbcopy(plain)
+    pbcopy(plaintext_password)
 
     sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
     sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
@@ -215,9 +208,9 @@ def p_generate(args):
 
     pbcopy(old_board)
 p_g = p_generate
-p_gen = p_generate
 
-def p_add(args, entry=None):
+
+def p_add(args, plaintext_password=None):
     try:
         name = args.pop(0)
     except IndexError:
@@ -227,8 +220,11 @@ def p_add(args, entry=None):
         p_help()
         error_and_exit('$name is a required field')
 
-    if not entry:
-        entry = getpass.getpass('The password for "{0}": '.format(name))
+    if not plaintext_password:
+        plaintext_password = getpass.getpass('The password for "{0}": '.format(name))
+        if not plaintext_password:
+            sys.stderr.write('Password generated\n')
+            plaintext_password = generate_password(args)
 
     cursor.execute('SELECT password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
@@ -246,7 +242,7 @@ def p_add(args, entry=None):
     if password == '':
         error_and_exit('Password must not be blank')
     elif password_verify == password:
-        cipher, iv = encrypt(entry, password)
+        cipher, iv = encrypt(plaintext_password, password)
 
         sys.stdout.write('Username: ')
         username = sys.stdin.readline()[:-1]  # strip \n
@@ -254,6 +250,12 @@ def p_add(args, entry=None):
     else:
         error_and_exit('Passwords do not match')
 p_a = p_add
+
+
+def p_change(args):
+    p_show(args[:])
+    p_generate(args[:])
+p_c = p_change
 
 
 def p_remove(args):
