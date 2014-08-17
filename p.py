@@ -32,6 +32,7 @@ import hashlib
 import random
 import re
 import json
+from mouseware import generate as mouseware_generate
 
 
 try:
@@ -59,15 +60,8 @@ def get_default_connection():
     return get_connection(get_passwords_file())
 
 
-def generate_password(args):
-    length = 20
-    chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`-=~!@#$%^&*()_+[]\{}|;:",./<>?'
-    entropy = random.SystemRandom()
-    password = ''
-    while length:
-        password += entropy.choice(chars)
-        length -= 1
-    return password
+def generate_password():
+    return mouseware_generate()
 
 
 def migrate(migrate_cursor):
@@ -204,7 +198,7 @@ def p_generate(args):
         p_help()
         error_and_exit('$name is a required field')
 
-    plaintext_password = generate_password(args)
+    plaintext_password = generate_password()
     p_add([name], plaintext_password)
 
     old_board = pbpaste()
@@ -232,7 +226,7 @@ def p_add(args, plaintext_password=None):
         plaintext_password = getpass.getpass('The password for "{0}": '.format(name))
         if not plaintext_password:
             sys.stderr.write('Password generated\n')
-            plaintext_password = generate_password(args)
+            plaintext_password = generate_password()
 
     cursor.execute('SELECT password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
