@@ -287,11 +287,29 @@ p_r = p_remove
 
 def p_list(args):
     cursor.execute('SELECT name, username FROM passwords')
+    try:
+        p_filter = args.pop(0)
+    except IndexError:
+        p_filter = None
+
     rows = []
     name_max = 8
     for row in cursor.fetchall():
-        name_max = max(name_max, len(row[0]))
-        rows.append(row)
+        name, username = row
+
+        if p_filter:
+            try:
+                name.index(p_filter)
+                include = True
+            except ValueError:
+                include = False
+        else:
+            include = True
+
+        if include:
+            name_max = max(name_max, len(name))
+            rows.append(row)
+
     sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username\n')
     sys.stdout.write('-' * name_max + '-+----------\n')
     for (name, username) in rows:
