@@ -17,6 +17,7 @@ contribute your patch!  https://github.com/colinta/p
                      clipboard.
 --remove, -r $name   Removes an entry
 --list, l            Lists all the entry names (no passwords are shown)
+--list $filter       Lists entries that include the $filter
 --file, f            Show the password file being used
 --merge, -m [$file]  Merges entries from another p_password.sql store
 --check              Tries to decrypt entries using the "Master" password. Any
