@@ -13,6 +13,9 @@ contribute your patch!  https://github.com/colinta/p
                      Existing entries will be replaced
 --user, -u $name     Add a username to the entry $name.  You will be prompted
                      for the username.
+--note $name         Shows the notes for the entry.
+--n $name            Add a note to the entry.
+--N $name            Clears the note for the entry.
 --change, -c $name   Replaces an entry after copying the current password to the
                      clipboard.
 --remove, -r $name   Removes an entry
@@ -89,6 +92,9 @@ def migrate(migrate_cursor):
     if result < 2:
         migrate_cursor.execute('ALTER TABLE passwords ADD COLUMN username TEXT DEFAULT ""')
         migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', ['Add username column'])
+    if result < 3:
+        migrate_cursor.execute('ALTER TABLE passwords ADD COLUMN note TEXT DEFAULT ""')
+        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', ['Add note column'])
 
 
 conn = get_default_connection()
@@ -96,8 +102,9 @@ cursor = conn.cursor()
 migrate(cursor)
 
 
-def encrypt(entry, password):
-    iv = ''.join(chr(random.randint(0, 0xFF)) for i in range(16))
+def encrypt(entry, password, iv=None):
+    if not iv:
+        iv = ''.join(chr(random.randint(0, 0xFF)) for i in range(16))
     key = hashlib.sha256(password).digest()
     encryptor = AES.new(key, AES.MODE_CBC, iv)
     while len(entry) % 16 > 0:
@@ -109,7 +116,7 @@ def decrypt(ciphertext, password, iv):
     key = hashlib.sha256(password).digest()
     decryptor = AES.new(key, AES.MODE_CBC, iv)
     plaintext_password = decryptor.decrypt(ciphertext).rstrip(chr(0))
-    char_regex = re.compile(r'[ -~]')
+    char_regex = re.compile(r'[ -~\n\t]')
     is_char = lambda c: char_regex.match(c)
     if any(not is_char(c) for c in plaintext_password):
         error_and_exit('Wrong!')
@@ -403,6 +410,101 @@ def p_user(args):
 p_u = p_user
 
 
+def p_note(args):
+    try:
+        name = args.pop(0)
+    except IndexError:
+        name = None
+
+    if not name:
+        error_and_exit('$name is a required field')
+
+    cursor.execute('SELECT note, iv FROM passwords WHERE name = ? LIMIT 1', [name])
+    result = cursor.fetchone()
+    if result:
+        ciphertext = result[0]
+        if not ciphertext:
+            error_and_exit('No note for {!r}'.format(name))
+        else:
+            iv = result[1]
+
+            password = getpass.getpass()
+            plaintext_note = decrypt(ciphertext, password, iv)
+            sys.stdout.write(plaintext_note)
+            sys.stdout.write("\n")
+    else:
+        error_and_exit('No entry for {!r}'.format(name))
+
+
+def p_add_note(args):
+    try:
+        name = args.pop(0)
+    except IndexError:
+        name = None
+
+    try:
+        note = args.pop(0)
+    except IndexError:
+        note = ''
+        line = True
+        prompt = 'New note: '
+        while line:
+            sys.stdout.write(prompt)
+            line = sys.stdin.readline()[:-1]  # strip \n
+            prompt = '........> '
+            if line:
+                if note:
+                    note += "\n"
+                note += line
+
+    if not name:
+        error_and_exit('$name is a required field')
+
+    cursor.execute('SELECT note, iv FROM passwords WHERE name = ? LIMIT 1', [name])
+    result = cursor.fetchone()
+    if result:
+        ciphertext = result[0]
+        iv = result[1]
+        password = getpass.getpass()
+        plaintext_note = decrypt(ciphertext, password, iv)
+        if plaintext_note:
+            plaintext_note += "\n"
+        plaintext_note += note
+        encrypted_note, iv = encrypt(plaintext_note, password, iv)
+        cursor.execute('UPDATE passwords SET note = ? WHERE name = ?', [encrypted_note, name])
+        sys.stderr.write("Note updated\n")
+    else:
+        error_and_exit('No entry for {!r}'.format(name))
+p_n = p_add_note
+
+
+def p_clear_note(args):
+    try:
+        name = args.pop(0)
+    except IndexError:
+        name = None
+
+    if not name:
+        error_and_exit('$name is a required field')
+
+    cursor.execute('SELECT password, iv, note FROM passwords WHERE name = ? LIMIT 1', [name])
+    result = cursor.fetchone()
+    if result:
+        ciphertext = result[0]
+        iv = result[1]
+        note = result[2]
+        if note:
+            password = getpass.getpass()
+            decrypt(ciphertext, password, iv)
+            cursor.execute('UPDATE passwords SET note = ? WHERE name = ?', ['', name])
+            sys.stderr.write('Note removed\n')
+        else:
+            sys.stderr.write('Entry {!r} doesn\'t have a note.\n'.format(name))
+    else:
+        error_and_exit('No entry for {!r}'.format(name))
+p_N = p_clear_note
+
+
 def p_file(args):
     print(get_passwords_file())
 p_f = p_file
@@ -417,7 +519,7 @@ if __name__ == "__main__":
         args = []
     else:
         if sys.argv[1][0:2] == '--':
-            command_name = sys.argv[1][2:]
+            command_name = sys.argv[1][2:].replace('-', '_')
             args = sys.argv[2:]
         elif sys.argv[1][0] == '-':
             command_name = sys.argv[1][1:]
