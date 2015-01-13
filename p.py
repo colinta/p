@@ -294,7 +294,7 @@ p_r = p_remove
 
 
 def p_list(args):
-    cursor.execute('SELECT name, username FROM passwords')
+    cursor.execute('SELECT name, username, note FROM passwords')
     try:
         p_filter = args.pop(0)
     except IndexError:
@@ -302,8 +302,9 @@ def p_list(args):
 
     rows = []
     name_max = 8
+    username_max = 8
     for row in cursor.fetchall():
-        name, username = row
+        name, username, note = row
 
         if p_filter:
             try:
@@ -316,16 +317,22 @@ def p_list(args):
 
         if include:
             name_max = max(name_max, len(name))
+            username_max = max(username_max, len(username))
             rows.append(row)
 
-    sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username\n')
+    sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username' + ' ' * (username_max - 8) + ' | note?\n')
     sys.stdout.write('-' * name_max + '-+----------\n')
-    for (name, username) in rows:
+    for (name, username, note) in rows:
         sys.stdout.write(name)
-        sys.stdout.write(' ' * (name_max - len(name)) + ' |')
+        sys.stdout.write(' ' * (name_max - len(name)) + ' | ')
         if username:
-            sys.stdout.write(' ')
             sys.stdout.write(username)
+            sys.stdout.write(' ' * (username_max - len(username)) + ' |')
+        else:
+            sys.stdout.write(' ' * username_max + ' |')
+
+        if note:
+            sys.stdout.write(' YES')
         sys.stdout.write("\n")
 p_l = p_list
 
