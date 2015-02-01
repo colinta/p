@@ -133,13 +133,13 @@ def p_help(args=[]):
 p_h = p_help
 
 
-def pbcopy(content):
+def pb_set(content):
     sock = os.popen('pbcopy', 'w')
     sock.write(content)
     sock.close()
 
 
-def pbpaste():
+def pb_get():
     sock = os.popen('pbpaste', 'r')
     old_board = sock.read()
     sock.close()
@@ -168,7 +168,7 @@ def p_show(args, show_username=True):
         plaintext_password = decrypt(ciphertext, password, iv)
 
         if sys.stdout.isatty():
-            old_board = pbpaste()
+            old_board = pb_get()
 
             if show_username and username:
                 sys.stderr.write("\033[1mThe username is in the clipboard\033[0m\n")
@@ -176,15 +176,16 @@ def p_show(args, show_username=True):
                 sys.stderr.write(username)
                 sys.stderr.write("\n")
                 sys.stderr.write('Press enter to copy the password, or ctrl+c to abort...')
-                pbcopy(username)
+                pb_set(username)
                 sys.stdin.readline()
 
             sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
             sys.stderr.write('Press enter to restore the clipboard, or ctrl+c to abort...')
-            pbcopy(plaintext_password)
+            pb_set(plaintext_password)
             sys.stdin.readline()
 
-            pbcopy(old_board)
+            if pb_get() == plaintext_password:
+                pb_set(old_board)
         else:
             sys.stdout.write(plaintext_password)
     else:
@@ -209,14 +210,15 @@ def p_generate(args):
     plaintext_password = generate_password()
     p_add([name], plaintext_password)
 
-    old_board = pbpaste()
-    pbcopy(plaintext_password)
+    old_board = pb_get()
+    pb_set(plaintext_password)
 
     sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
     sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
     sys.stdin.readline()
 
-    pbcopy(old_board)
+    if pb_get() == plaintext_password:
+        pb_set(old_board)
 p_g = p_generate
 
 
