@@ -339,6 +339,12 @@ def p_list(args):
 p_l = p_list
 
 
+def confirm(prompt):
+    sys.stderr.write(prompt)
+    sys.stderr.write("\n[yn] ")
+    yay_nay = sys.stdin.readline()[:-1]  # strip \n
+    return yay_nay == 'y'
+
 def p_merge(args):
     try:
         file = args.pop(0)
@@ -359,11 +365,12 @@ def p_merge(args):
         name = merge_result[0]
         existing_result = cursor.execute('SELECT username FROM passwords WHERE name = ?', [name]).fetchone()
         if not existing_result:
-            print("Adding {name}".format(name=name))
-            cursor.execute('INSERT INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', merge_result)
+            if confirm("Add {name}?".format(name=name)):
+                cursor.execute('INSERT INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', merge_result)
         elif existing_result[0] != merge_result[3]:
-            print("Updating {name} username from {0!r} to {1!r}".format(existing_result[0], merge_result[3], name=name))
-            cursor.execute('UPDATE passwords SET username = ? WHERE name = ?', [merge_result[3], name])
+            prompt = "Update {name} username from {0!r} to {1!r}?".format(existing_result[0], merge_result[3], name=name)
+            if confirm(prompt):
+                cursor.execute('UPDATE passwords SET username = ? WHERE name = ?', [merge_result[3], name])
 
     merge_cursor.close()
     merge_conn.commit()
