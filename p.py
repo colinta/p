@@ -169,11 +169,11 @@ def p_show(args, show_username=True, show_notes=False):
     if result:
         username = result[0]
         iv = result[1]
-        ciphertext = result[2]
+        cipher_pass = result[2]
         cipher_note = result[3]
 
         password = getpass.getpass()
-        plaintext_password = decrypt(ciphertext, password, iv)
+        plaintext_password = decrypt(cipher_pass, password, iv)
         plaintext_note = cipher_note and decrypt(cipher_note, password, iv)
 
         if sys.stdout.isatty():
@@ -480,14 +480,14 @@ def p_note(args):
     cursor.execute('SELECT note, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
     if result:
-        ciphertext = result[0]
-        if not ciphertext:
+        cipher_pass = result[0]
+        if not cipher_pass:
             error_and_exit('No note for {!r}'.format(name))
         else:
             iv = result[1]
 
             password = getpass.getpass()
-            plaintext_note = decrypt(ciphertext, password, iv)
+            plaintext_note = decrypt(cipher_pass, password, iv)
             sys.stdout.write(plaintext_note)
             sys.stdout.write("\n")
     else:
@@ -521,10 +521,10 @@ def p_add_note(args):
     cursor.execute('SELECT note, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
     if result:
-        ciphertext = result[0]
+        cipher_pass = result[0]
         iv = result[1]
         password = getpass.getpass()
-        plaintext_note = decrypt(ciphertext, password, iv)
+        plaintext_note = decrypt(cipher_pass, password, iv)
         if plaintext_note:
             plaintext_note += "\n"
         plaintext_note += note
@@ -548,12 +548,12 @@ def p_clear_note(args):
     cursor.execute('SELECT password, iv, note FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
     if result:
-        ciphertext = result[0]
+        cipher_pass = result[0]
         iv = result[1]
         note = result[2]
         if note:
             password = getpass.getpass()
-            decrypt(ciphertext, password, iv)
+            decrypt(cipher_pass, password, iv)
             cursor.execute('UPDATE passwords SET note = ? WHERE name = ?', ['', name])
             sys.stderr.write('Note removed\n')
         else:
