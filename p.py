@@ -216,7 +216,14 @@ def p_show(args, show_username=True, show_notes=False):
         else:
             sys.stdout.write(plaintext_password)
     else:
-        sys.stdout.write('"{0}" was not found, should I make an entry? [y]: '.format(name))
+        sys.stdout.write('"{0}" was not found.'.format(name))
+        rows = search(name)
+        if rows:
+            sys.stdout.write(' Maybe you meant:\n')
+            for row in rows:
+                found_name = row[0]
+                sys.stdout.write('  {0}\n'.format(found_name))
+        sys.stdout.write('\nShould I make an entry? [y]: ')
         should_add = sys.stdin.readline()[:-1]  # strip \n
         if should_add == '' or should_add == 'y':
             p_generate([name])
@@ -322,16 +329,10 @@ def p_remove(args):
 p_r = p_remove
 
 
-def p_list(args):
+def search(p_filter):
     cursor.execute('SELECT name, username, note FROM passwords')
-    try:
-        p_filter = args.pop(0)
-    except IndexError:
-        p_filter = None
 
     rows = []
-    name_max = 8
-    username_max = 8
     for row in cursor.fetchall():
         name, username, note = row
 
@@ -345,12 +346,26 @@ def p_list(args):
             include = True
 
         if include:
-            name_max = max(name_max, len(name))
-            username_max = max(username_max, len(username))
             rows.append(row)
+    return rows
+
+
+def p_list(args):
+    try:
+        p_filter = args.pop(0)
+    except IndexError:
+        p_filter = None
+
+    rows = search(p_filter)
+    name_max = 8
+    username_max = 8
+    for row in rows:
+        name, username, note = row
+        name_max = max(name_max, len(name))
+        username_max = max(username_max, len(username))
 
     sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username' + ' ' * (username_max - 8) + ' | note?\n')
-    sys.stdout.write('-' * name_max + '-+----------\n')
+    sys.stdout.write('-' * name_max + '-+-' + '-' * username_max + '-+-------\n')
     for (name, username, note) in rows:
         sys.stdout.write(name)
         sys.stdout.write(' ' * (name_max - len(name)) + ' | ')
@@ -361,7 +376,7 @@ def p_list(args):
             sys.stdout.write(' ' * username_max + ' |')
 
         if note:
-            sys.stdout.write(' YES')
+            sys.stdout.write(' (encrypted)')
         sys.stdout.write("\n")
 p_l = p_list
 
