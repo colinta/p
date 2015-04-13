@@ -7,6 +7,8 @@ contribute your patch!  https://github.com/colinta/p
 
 [--show] $name       Show the password for $name and the username if it's
                      available.  Default command.
+--verbose, -v $name  Show the password for $name, username, and notes. (enter q
+                     to quit)
 --pass, -p $name     Show the password for $name, don't show the username.
 --help, -h           Show this message.
 --add, -a $name      Add entry $name.  You will be prompted for the password.
@@ -151,21 +153,28 @@ def p_pass(args):
 p_p = p_pass
 
 
-def p_show(args, show_username=True):
+def p_verbose(args):
+    p_show(args, show_username=False, show_notes=True)
+p_v = p_verbose
+
+
+def p_show(args, show_username=True, show_notes=False):
     name = args.pop()
     if not name:
         p_help()
         error_and_exit('$name is a required field')
 
-    cursor.execute('SELECT password, iv, username FROM passwords WHERE name = ? LIMIT 1', [name])
+    cursor.execute('SELECT username, iv, password, note FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
     if result:
-        ciphertext = result[0]
+        username = result[0]
         iv = result[1]
-        username = result[2]
+        ciphertext = result[2]
+        cipher_note = result[3]
 
         password = getpass.getpass()
         plaintext_password = decrypt(ciphertext, password, iv)
+        plaintext_note = cipher_note and decrypt(cipher_note, password, iv)
 
         if sys.stdout.isatty():
             old_board = pb_get()
@@ -183,6 +192,24 @@ def p_show(args, show_username=True):
             sys.stderr.write('Press enter to restore the clipboard, or ctrl+c to abort...')
             pb_set(plaintext_password)
             sys.stdin.readline()
+
+            if show_notes and plaintext_note:
+                sys.stderr.write("\033[1mNotes: (enter 'q' to abort)\033[0m\n")
+                notes = plaintext_note.split("\n")
+                for note in notes:
+                    if ':' in note:
+                        note = note.split(':')
+                        key = note[0].strip()
+                        value = note[1].strip()
+                        sys.stderr.write("{} ({!r}) is in the clipboard...".format(key, value))
+                        pb_set(value)
+                    else:
+                        sys.stderr.write("{!r} is in the clipboard...".format(note))
+                        pb_set(note)
+
+                    quit = sys.stdin.readline()
+                    if quit.lower() == "q\n":
+                        break
 
             if pb_get() == plaintext_password:
                 pb_set(old_board)
