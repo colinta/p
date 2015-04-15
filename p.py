@@ -154,7 +154,7 @@ p_p = p_pass
 
 
 def p_verbose(args):
-    p_show(args, show_username=False, show_notes=True)
+    p_show(args, show_username=True, show_notes=True)
 p_v = p_verbose
 
 
