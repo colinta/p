@@ -272,12 +272,14 @@ def p_add(args, plaintext_password=None):
             sys.stderr.write('Password generated\n')
             plaintext_password = generate_password()
 
-    cursor.execute('SELECT password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
+    cursor.execute('SELECT username, password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
+    username = None
     if result:
+        username = result[0]
         password = getpass.getpass('Old: ')
         try:
-            if not decrypt(result[0], password, result[1]):
+            if not decrypt(result[1], password, result[2]):
                 error_and_exit('Old password is incorrect')
         except ValueError:
             pass
@@ -290,9 +292,16 @@ def p_add(args, plaintext_password=None):
     elif password_verify == password:
         cipher, iv = encrypt(plaintext_password, password)
 
-        sys.stdout.write('Username: ')
-        username = sys.stdin.readline()[:-1]  # strip \n
-        cursor.execute('REPLACE INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', (name, cipher, iv, username))
+        if username:
+            sys.stdout.write('Keep using {!r}: [Yn] '.format(username))
+            keep_it = sys.stdin.readline()[:-1]
+            if keep_it.lower() == "n":
+                username = None
+
+        if not username:
+            sys.stdout.write('Username: ')
+            username = sys.stdin.readline()[:-1]  # strip \n
+            cursor.execute('REPLACE INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', (name, cipher, iv, username))
     else:
         error_and_exit('Passwords do not match')
 p_a = p_add
