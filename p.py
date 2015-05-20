@@ -301,7 +301,8 @@ def p_add(args, plaintext_password=None):
         if not username:
             sys.stdout.write('Username: ')
             username = sys.stdin.readline()[:-1]  # strip \n
-            cursor.execute('REPLACE INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', (name, cipher, iv, username))
+
+        cursor.execute('REPLACE INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', (name, cipher, iv, username))
     else:
         error_and_exit('Passwords do not match')
 p_a = p_add
