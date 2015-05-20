@@ -267,10 +267,14 @@ def p_add(args, plaintext_password=None):
         error_and_exit('$name is a required field')
 
     if not plaintext_password:
-        plaintext_password = getpass.getpass('The password for "{0}": '.format(name))
+        sys.stderr.write('Enter the password for "{0}"\n'.format(name))
+        plaintext_password = getpass.getpass('or leave blank for more options: ')
         if not plaintext_password:
-            sys.stderr.write('Password generated\n')
-            plaintext_password = generate_password()
+            if confirm('Use clipboard?', 'y'):
+                plaintext_password = pb_get().strip()
+            else:
+                sys.stderr.write('Password generated\n')
+                plaintext_password = generate_password()
 
     cursor.execute('SELECT username, password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
@@ -391,11 +395,13 @@ def p_list(args):
 p_l = p_list
 
 
-def confirm(prompt):
+def confirm(prompt, default=''):
     sys.stderr.write(prompt)
-    sys.stderr.write("\n[yn] ")
+    sys.stderr.write(" [yn] ".replace(default, default.upper()))
     yay_nay = sys.stdin.readline()[:-1]  # strip \n
-    return yay_nay == 'y'
+    if not yay_nay:
+        yay_nay = default
+    return yay_nay.lower() == 'y'
 
 def p_merge(args):
     try:
