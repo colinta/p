@@ -5,6 +5,9 @@ This is designed to run on Mac OS X, and uses the `pbcopy` and `pbpaste`
 commands. If you would like to adapt this to use `xsel`, please fork and
 contribute your patch!  https://github.com/colinta/p
 
+The default location of the sqlite file is ~/.p_passwords.sql, but you can
+set it using the `P_PASSWORDS_FILE` environment variable.
+
 [--show] $name       Show the password for $name and the username if it's
                      available.  Default command.
 --verbose, -v $name  Show the password for $name, username, and notes. (enter q
@@ -37,8 +40,7 @@ import getpass
 import hashlib
 import random
 import re
-import json
-from mouseware import generate as mouseware_generate
+import mouseware
 
 
 try:
@@ -67,7 +69,7 @@ def get_default_connection():
 
 
 def generate_password():
-    return mouseware_generate()
+    return mouseware.generate()
 
 
 def migrate(migrate_cursor):
