@@ -81,7 +81,7 @@ def migrate(migrate_cursor):
                         name TEXT
                       )''')
 
-    migrate_cursor.execute('SELECT MAX(version) FROM password_migrations')
+    migrate_cursor.execute('SELECT COUNT(*) FROM password_migrations')
     result = migrate_cursor.fetchone()[0] or 0
     if result < 1:
         migrate_cursor.execute('''CREATE TABLE
