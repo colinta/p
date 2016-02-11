@@ -150,6 +150,12 @@ def pb_get():
     return old_board
 
 
+def p_migrations(args):
+    cursor.execute('SELECT version, name FROM password_migrations ORDER BY version')
+    for row in cursor.fetchall():
+        version, name = row
+        print(str(version) + ": " + name)
+
 def p_pass(args):
     p_show(args, show_username=False)
 p_p = p_pass
