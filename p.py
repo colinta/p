@@ -31,7 +31,7 @@ set it using the `P_PASSWORDS_FILE` environment variable.
 --check              Tries to decrypt entries using the "Master" password. Any
                      entries that fail are printed to the screen
 --backup, -b $file   Make a backup of the password store
---generate, -g $name Create a new entry
+--generate, -g       Generate a password using mouseware
 """
 import sqlite3
 import os
@@ -234,17 +234,7 @@ def p_show(args, show_username=True, show_notes=False):
 
 
 def p_generate(args):
-    try:
-        name = args.pop(0)
-    except IndexError:
-        name = None
-
-    if not name:
-        p_help()
-        error_and_exit('$name is a required field')
-
     plaintext_password = generate_password()
-    p_add([name], plaintext_password)
 
     old_board = pb_get()
     pb_set(plaintext_password)
