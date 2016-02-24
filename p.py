@@ -9,7 +9,8 @@ The default location of the sqlite file is ~/.p_passwords.sql, but you can
 set it using the `P_PASSWORDS_FILE` environment variable.
 
 [--show] $name       Show the password for $name and the username if it's
-                     available.  Default command.
+                     available.  Default command.  If there is no entry with
+                     this name, a password can be created (using --create)
 --verbose, -v $name  Show the password for $name, username, and notes. (enter q
                      to quit)
 --pass, -p $name     Show the password for $name, don't show the username.
@@ -32,6 +33,7 @@ set it using the `P_PASSWORDS_FILE` environment variable.
                      entries that fail are printed to the screen
 --backup, -b $file   Make a backup of the password store
 --generate, -g       Generate a password using mouseware
+--create, -c $name   Generate a password and save it to $name
 """
 import sqlite3
 import os
@@ -234,9 +236,27 @@ def p_show(args, show_username=True, show_notes=False):
         sys.stdout.write('\nShould I make an entry? [y]: ')
         should_add = sys.stdin.readline()[:-1]  # strip \n
         if should_add == '' or should_add == 'y':
-            p_generate([name])
+            p_create([name])
         else:
             error_and_exit('aborting'.format(name))
+
+
+def p_create(args):
+    try:
+        name = args.pop(0)
+    except IndexError:
+        name = None
+
+    if not name:
+        p_help()
+        error_and_exit('$name is a required field')
+
+    plaintext_password = generate_password()
+    p_add([name], plaintext_password)
+
+    old_board = pb_get()
+    pb_set(plaintext_password)
+p_c = p_create
 
 
 def p_generate(args):
