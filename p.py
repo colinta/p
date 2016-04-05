@@ -256,6 +256,12 @@ def p_create(args):
 
     old_board = pb_get()
     pb_set(plaintext_password)
+    sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
+    sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
+    sys.stdin.readline()
+
+    if pb_get() == plaintext_password:
+        pb_set(old_board)
 p_c = p_create
 
 
