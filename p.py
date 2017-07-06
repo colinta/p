@@ -118,14 +118,17 @@ def encrypt(entry, password, iv=None):
     return encryptor.encrypt(entry), iv
 
 
-def decrypt(ciphertext, password, iv):
+def decrypt(ciphertext, password, iv, exit=True):
     key = hashlib.sha256(password).digest()
     decryptor = AES.new(key, AES.MODE_CBC, iv)
     plaintext_password = decryptor.decrypt(ciphertext).rstrip(chr(0))
     char_regex = re.compile(r'[ -~\n\t]')
     is_char = lambda c: char_regex.match(c)
     if any(not is_char(c) for c in plaintext_password):
-        error_and_exit('Wrong!')
+        if exit:
+            error_and_exit('Wrong!')
+        else:
+            return None
     return plaintext_password
 
 
@@ -439,20 +442,33 @@ def p_merge(args):
 
     if not os.path.exists(file):
         error_and_exit('Could not find {file}'.format(file=file))
+
+    password = getpass.getpass('Password: ')
+
     merge_conn = get_connection(file)
     merge_cursor = merge_conn.cursor()
     migrate(merge_cursor)
     merge_cursor.execute('SELECT name, password, iv, username FROM passwords')
     for merge_result in merge_cursor.fetchall():
         name = merge_result[0]
-        existing_result = cursor.execute('SELECT username FROM passwords WHERE name = ?', [name]).fetchone()
+        existing_result = cursor.execute('SELECT name, password, iv, username FROM passwords WHERE name = ?', [name]).fetchone()
         if not existing_result:
             if confirm("Add {name}?".format(name=name)):
                 cursor.execute('INSERT INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', merge_result)
-        elif existing_result[0] != merge_result[3]:
-            prompt = "Update {name} username from {0!r} to {1!r}?".format(existing_result[0], merge_result[3], name=name)
-            if confirm(prompt):
-                cursor.execute('UPDATE passwords SET username = ? WHERE name = ?', [merge_result[3], name])
+        else:
+            if existing_result[3] != merge_result[3]:
+                prompt = "Update {name} username from {0!r} to {1!r}?".format(existing_result[0], merge_result[3], name=name)
+                if confirm(prompt):
+                    cursor.execute('UPDATE passwords SET username = ? WHERE name = ?', [merge_result[3], name])
+
+            (merge_password, merge_iv) = (merge_result[1], merge_result[2])
+            (existing_password, existing_iv) = (existing_result[1], existing_result[2])
+            plaintext_merge = decrypt(merge_password, password, merge_iv)
+            plaintext_existing = decrypt(existing_password, password, existing_iv)
+            if plaintext_merge and plaintext_existing and plaintext_merge != plaintext_existing:
+                prompt = "Update {name} password from {0!r} to {1!r}?".format(plaintext_existing, plaintext_merge, name=name)
+                if confirm(prompt):
+                    cursor.execute('UPDATE passwords SET password = ?, iv = ? WHERE name = ?', [merge_password, merge_iv, name])
 
     merge_cursor.close()
     merge_conn.commit()
