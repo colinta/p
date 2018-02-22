@@ -145,9 +145,15 @@ def error_and_exit(message):
     sys.exit(1)
 
 
-def p_help(args=[]):
+##|
+##| COMMANDS
+##|
+COMMANDS = {}
+
+def command_help(args=[]):
     print(__doc__)
-p_h = p_help
+COMMANDS['h'] = command_help
+COMMANDS['help'] = command_help
 
 
 _pb_prev = None
@@ -169,26 +175,29 @@ def pb_get():
 _pb_prev = pb_get()
 
 
-def p_migrations(args):
+def command_migrations(args):
     cursor.execute('SELECT version, name FROM password_migrations ORDER BY version')
     for row in cursor.fetchall():
         version, name = row
         print(str(version) + ": " + name)
+COMMANDS['migrations'] = command_migrations
 
-def p_pass(args):
-    p_show(args, show_username=False)
-p_p = p_pass
-
-
-def p_verbose(args):
-    p_show(args, show_username=True, show_notes=True)
-p_v = p_verbose
+def command_password_only(args):
+    command_show(args, show_username=False)
+COMMANDS['p'] = command_password_only
+COMMANDS['pass'] = command_password_only
 
 
-def p_show(args, show_username=True, show_notes=False):
+def command_verbose(args):
+    command_show(args, show_username=True, show_notes=True)
+COMMANDS['v'] = command_verbose
+COMMANDS['verbose'] = command_verbose
+
+
+def command_show(args, show_username=True, show_notes=False):
     name = args.pop()
     if not name:
-        p_help()
+        command_help()
         error_and_exit('$name is a required field')
 
     cursor.execute('SELECT username, iv, password, note FROM passwords WHERE name = ? LIMIT 1', [name])
@@ -253,23 +262,23 @@ def p_show(args, show_username=True, show_notes=False):
         sys.stdout.write('\nShould I make an entry? [y]: ')
         should_add = get_input()
         if should_add == '' or should_add == 'y':
-            p_create([name])
+            command_create([name])
         else:
             error_and_exit('aborting'.format(name))
+COMMANDS['show'] = command_show
 
-
-def p_create(args):
+def command_create(args):
     try:
         name = args.pop(0)
     except IndexError:
         name = None
 
     if not name:
-        p_help()
+        command_help()
         error_and_exit('$name is a required field')
 
     plaintext_password = generate_password()
-    p_add([name], plaintext_password)
+    command_add([name], plaintext_password)
 
     old_board = pb_get()
     pb_set(plaintext_password)
@@ -279,10 +288,11 @@ def p_create(args):
 
     if pb_get() == pb_prev():
         pb_set(old_board)
-p_c = p_create
+COMMANDS['c'] = command_create
+COMMANDS['create'] = command_create
 
 
-def p_generate(args):
+def command_generate(args):
     plaintext_password = generate_password()
 
     old_board = pb_get()
@@ -294,17 +304,18 @@ def p_generate(args):
 
     if pb_get() == pb_prev():
         pb_set(old_board)
-p_g = p_generate
+COMMANDS['g'] = command_generate
+COMMANDS['generate'] = command_generate
 
 
-def p_add(args, plaintext_password=None):
+def command_add(args, plaintext_password=None):
     try:
         name = args.pop(0)
     except IndexError:
         name = None
 
     if not name:
-        p_help()
+        command_help()
         error_and_exit('$name is a required field')
 
     if not plaintext_password:
@@ -350,23 +361,25 @@ def p_add(args, plaintext_password=None):
         cursor.execute('REPLACE INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', (name, cipher, iv, username))
     else:
         error_and_exit('Passwords do not match')
-p_a = p_add
+COMMANDS['a'] = command_add
+COMMANDS['add'] = command_add
 
 
-def p_change(args):
-    p_show(args[:])
-    p_generate(args[:])
-p_c = p_change
+def command_change(args):
+    command_show(args[:])
+    command_generate(args[:])
+COMMANDS['c'] = command_change
+COMMANDS['change'] = command_change
 
 
-def p_remove(args):
+def command_remove(args):
     try:
         name = args.pop(0)
     except IndexError:
         name = None
 
     if not name:
-        p_help()
+        command_help()
         error_and_exit('$name is a required field')
 
     cursor.execute('SELECT password, iv FROM passwords WHERE name = ? LIMIT 1', [name])
@@ -381,19 +394,20 @@ def p_remove(args):
         cursor.execute('DELETE FROM passwords WHERE name = ?', [name])
     else:
         error_and_exit('Password "{0}" was not found'.format(name))
-p_r = p_remove
+COMMANDS['r'] = command_remove
+COMMANDS['remove'] = command_remove
 
 
-def search(p_filter):
+def search(filter):
     cursor.execute('SELECT name, username, note FROM passwords')
 
     rows = []
     for row in cursor.fetchall():
         name, username, note = row
 
-        if p_filter:
+        if filter:
             try:
-                name.index(p_filter)
+                name.index(filter)
                 include = True
             except ValueError:
                 include = False
@@ -405,13 +419,13 @@ def search(p_filter):
     return rows
 
 
-def p_list(args):
+def command_list(args):
     try:
-        p_filter = args.pop(0)
+        filter = args.pop(0)
     except IndexError:
-        p_filter = None
+        filter = None
 
-    rows = search(p_filter)
+    rows = search(filter)
     name_max = 8
     username_max = 8
     for row in rows:
@@ -433,7 +447,8 @@ def p_list(args):
         if note:
             sys.stdout.write(' (encrypted)')
         sys.stdout.write("\n")
-p_l = p_list
+COMMANDS['l'] = command_list
+COMMANDS['list'] = command_list
 
 
 def confirm(prompt, default=''):
@@ -444,14 +459,14 @@ def confirm(prompt, default=''):
         yay_nay = default
     return yay_nay.lower() == 'y'
 
-def p_merge(args):
+def command_merge(args):
     try:
         file = args.pop(0)
     except IndexError:
         file = None
 
     if not file:
-        p_help()
+        command_help()
         error_and_exit('$file is a required field')
 
     if not os.path.exists(file):
@@ -486,10 +501,11 @@ def p_merge(args):
 
     merge_cursor.close()
     merge_conn.commit()
-p_m = p_merge
+COMMANDS['m'] = command_merge
+COMMANDS['merge'] = command_merge
 
 
-def p_check(args):
+def command_check(args):
     master = getpass.getpass('Master: ')
     cursor.execute('SELECT name, password, iv FROM passwords')
     for (name, password, iv) in cursor.fetchall():
@@ -498,15 +514,16 @@ def p_check(args):
         except ValueError:
             print(name)
 
+COMMANDS['check'] = command_check
 
-def p_backup(args):
+def command_backup(args):
     try:
         file = args.pop(0)
     except IndexError:
         file = None
 
     if not file:
-        p_help()
+        command_help()
         error_and_exit('$file is a required field')
 
     if os.path.exists(file):
@@ -514,17 +531,18 @@ def p_backup(args):
 
     import shutil
     shutil.copyfile(get_passwords_file(), file)
-p_b = p_backup
+COMMANDS['b'] = command_backup
+COMMANDS['backup'] = command_backup
 
 
-def p_user(args):
+def command_user(args):
     try:
         name = args.pop(0)
     except IndexError:
         name = None
 
     if not name:
-        p_help()
+        command_help()
         error_and_exit('$name is a required field')
 
     cursor.execute('SELECT name FROM passwords WHERE name = ? LIMIT 1', [name])
@@ -535,10 +553,11 @@ def p_user(args):
         cursor.execute('UPDATE passwords SET username = ? WHERE name = ?', (username, name))
     else:
         error_and_exit('"{0}" was not found'.format(name))
-p_u = p_user
+COMMANDS['u'] = command_user
+COMMANDS['user'] = command_user
 
 
-def p_note(args):
+def command_note(args):
     try:
         name = args.pop(0)
     except IndexError:
@@ -563,8 +582,9 @@ def p_note(args):
     else:
         error_and_exit('No entry for {!r}'.format(name))
 
+COMMANDS['note'] = command_note
 
-def p_add_note(args):
+def command_add_note(args):
     try:
         name = args.pop(0)
     except IndexError:
@@ -603,10 +623,11 @@ def p_add_note(args):
         sys.stderr.write("Note updated\n")
     else:
         error_and_exit('No entry for {!r}'.format(name))
-p_n = p_add_note
+COMMANDS['n'] = command_add_note
+COMMANDS['add_note'] = command_add_note
 
 
-def p_clear_note(args):
+def command_clear_note(args):
     try:
         name = args.pop(0)
     except IndexError:
@@ -630,12 +651,14 @@ def p_clear_note(args):
             sys.stderr.write('Entry {!r} doesn\'t have a note.\n'.format(name))
     else:
         error_and_exit('No entry for {!r}'.format(name))
-p_N = p_clear_note
+COMMANDS['N'] = command_clear_note
+COMMANDS['clear_note'] = command_clear_note
 
 
-def p_file(args):
+def command_file(args):
     print(get_passwords_file())
-p_f = p_file
+COMMANDS['f'] = command_file
+COMMANDS['file'] = command_file
 
 
 ##|
@@ -656,15 +679,16 @@ if __name__ == "__main__":
             command_name = 'show'
             args = sys.argv[1:]
 
-    command = locals().get('p_' + command_name)
-    if not command:
+    try:
+        command = COMMANDS[command_name]
+    except KeyError:
         cursor.close()
         conn.commit()
         error_and_exit('Unknown command "{0}"'.format(command_name))
-    else:
-        try:
-            command(args)
-        except KeyboardInterrupt:
-            sys.stderr.write("Aborting\n")
-        cursor.close()
-        conn.commit()
+
+    try:
+        command(args)
+    except KeyboardInterrupt:
+        sys.stderr.write("Aborting\n")
+    cursor.close()
+    conn.commit()
