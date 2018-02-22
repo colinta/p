@@ -74,6 +74,10 @@ def await_enter():
     sys.stdin.readline()
 
 
+def get_input():
+    return sys.stdin.readline()[:-1]  # strip \n
+
+
 def generate_password():
     return mouseware.generate()
 
@@ -224,8 +228,8 @@ def p_show(args, show_username=True, show_notes=False):
                         sys.stderr.write("{!r} is in the clipboard...".format(note))
                         pb_set(note)
 
-                    quit = sys.stdin.readline()
-                    if quit.lower() == "q\n":
+                    quit = get_input()
+                    if quit.lower() == "q":
                         break
 
             if pb_get() == plaintext_password:
@@ -241,7 +245,7 @@ def p_show(args, show_username=True, show_notes=False):
                 found_name = row[0]
                 sys.stdout.write('  {0}\n'.format(found_name))
         sys.stdout.write('\nShould I make an entry? [y]: ')
-        should_add = sys.stdin.readline()[:-1]  # strip \n
+        should_add = get_input()
         if should_add == '' or should_add == 'y':
             p_create([name])
         else:
@@ -329,13 +333,13 @@ def p_add(args, plaintext_password=None):
 
         if username:
             sys.stdout.write('Keep using {!r}: [Yn] '.format(username))
-            keep_it = sys.stdin.readline()[:-1]
+            keep_it = get_input()
             if keep_it.lower() == "n":
                 username = None
 
         if not username:
             sys.stdout.write('Username: ')
-            username = sys.stdin.readline()[:-1]  # strip \n
+            username = get_input()
 
         cursor.execute('REPLACE INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', (name, cipher, iv, username))
     else:
@@ -429,7 +433,7 @@ p_l = p_list
 def confirm(prompt, default=''):
     sys.stderr.write(prompt)
     sys.stderr.write(" [yn] ".replace(default, default.upper()))
-    yay_nay = sys.stdin.readline()[:-1]  # strip \n
+    yay_nay = get_input()
     if not yay_nay:
         yay_nay = default
     return yay_nay.lower() == 'y'
@@ -521,7 +525,7 @@ def p_user(args):
     result = cursor.fetchone()
     if result:
         sys.stdout.write('Username: ')
-        username = sys.stdin.readline()[:-1]  # strip \n
+        username = get_input()
         cursor.execute('UPDATE passwords SET username = ? WHERE name = ?', (username, name))
     else:
         error_and_exit('"{0}" was not found'.format(name))
@@ -568,7 +572,7 @@ def p_add_note(args):
         prompt = 'New note: '
         while line:
             sys.stdout.write(prompt)
-            line = sys.stdin.readline()[:-1]  # strip \n
+            line = get_input()
             prompt = '........> '
             if line:
                 if note:
