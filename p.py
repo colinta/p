@@ -150,9 +150,14 @@ def p_help(args=[]):
 p_h = p_help
 
 
+_pb_prev = None
+def pb_prev():
+    return _pb_prev
+
 def pb_set(content):
     sock = os.popen('pbcopy', 'w')
     sock.write(content)
+    _pb_prev = content
     sock.close()
 
 
@@ -161,6 +166,7 @@ def pb_get():
     old_board = sock.read()
     sock.close()
     return old_board
+_pb_prev = pb_get()
 
 
 def p_migrations(args):
@@ -232,7 +238,7 @@ def p_show(args, show_username=True, show_notes=False):
                     if quit.lower() == "q":
                         break
 
-            if pb_get() == plaintext_password:
+            if pb_get() == pb_prev():
                 pb_set(old_board)
         else:
             sys.stdout.write(plaintext_password)
@@ -271,7 +277,7 @@ def p_create(args):
     sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
     await_enter()
 
-    if pb_get() == plaintext_password:
+    if pb_get() == pb_prev():
         pb_set(old_board)
 p_c = p_create
 
@@ -286,7 +292,7 @@ def p_generate(args):
     sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
     await_enter()
 
-    if pb_get() == plaintext_password:
+    if pb_get() == pb_prev():
         pb_set(old_board)
 p_g = p_generate
 
