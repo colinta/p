@@ -70,6 +70,10 @@ def get_default_connection():
     return get_connection(get_passwords_file())
 
 
+def await_enter():
+    sys.stdin.readline()
+
+
 def generate_password():
     return mouseware.generate()
 
@@ -199,12 +203,12 @@ def p_show(args, show_username=True, show_notes=False):
                 sys.stderr.write("\n")
                 sys.stderr.write('Press enter to copy the password, or ctrl+c to abort...')
                 pb_set(username)
-                sys.stdin.readline()
+                await_enter()
 
             sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
             sys.stderr.write('Press enter to restore the clipboard, or ctrl+c to abort...')
             pb_set(plaintext_password)
-            sys.stdin.readline()
+            await_enter()
 
             if show_notes and plaintext_note:
                 sys.stderr.write("\033[1mNotes: (enter 'q' to abort)\033[0m\n")
@@ -261,7 +265,7 @@ def p_create(args):
     pb_set(plaintext_password)
     sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
     sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
-    sys.stdin.readline()
+    await_enter()
 
     if pb_get() == plaintext_password:
         pb_set(old_board)
@@ -276,7 +280,7 @@ def p_generate(args):
 
     sys.stderr.write("\033[1mThe password is in the clipboard\033[0m\n")
     sys.stderr.write('Press enter to clear the clipboard, or ctrl+c to abort...')
-    sys.stdin.readline()
+    await_enter()
 
     if pb_get() == plaintext_password:
         pb_set(old_board)
