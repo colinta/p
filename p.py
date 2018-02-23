@@ -94,21 +94,25 @@ def migrate(migrate_cursor):
     migrate_cursor.execute('SELECT COUNT(*) FROM password_migrations')
     result = migrate_cursor.fetchone()[0] or 0
     if result < 1:
-        migrate_cursor.execute('''CREATE TABLE
-                            IF NOT EXISTS
-                            passwords
-                          (
-                            name TEXT PRIMARY KEY,
-                            password TEXT,
-                            iv TEXT
-                          )''')
-        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', ['Initial commit'])
+        desc = 'Initial commit'
+        sys.stderr.write("Migrating to version 1: {}\n".format(desc))
+        migrate_cursor.execute('CREATE TABLE IF NOT EXISTS passwords (name TEXT PRIMARY KEY, password TEXT, iv TEXT)')
+        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', [desc])
     if result < 2:
+        desc = 'Add username column'
+        sys.stderr.write("Migrating to version 2: {}\n".format(desc))
         migrate_cursor.execute('ALTER TABLE passwords ADD COLUMN username TEXT DEFAULT ""')
-        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', ['Add username column'])
+        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', [desc])
     if result < 3:
+        desc = 'Add note column'
+        sys.stderr.write("Migrating to version 3: {}\n".format(desc))
         migrate_cursor.execute('ALTER TABLE passwords ADD COLUMN note TEXT DEFAULT ""')
-        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', ['Add note column'])
+        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', [desc])
+    if result < 4:
+        desc = 'Add note column'
+        sys.stderr.write("Migrating to version 4: {}\n".format(desc))
+        migrate_cursor.execute('ALTER TABLE passwords ADD COLUMN count INT DEFAULT 0')
+        migrate_cursor.execute('INSERT INTO password_migrations (name) VALUES (?)', [desc])
 
 
 conn = get_default_connection()
@@ -141,7 +145,13 @@ def decrypt(ciphertext, password, iv, exit=True):
 
 
 def error_and_exit(message):
-    sys.stderr.write("\033[1mError: \033[31m{0}\033[0m\n".format(message))
+    sys.stderr.write("\033[1mError: \033[31m{}\033[0m\n".format(message))
+    sys.exit(1)
+
+
+def just_exit(message=None):
+    if message:
+        sys.stderr.write("\033[31m{}\033[0m\n".format(message))
     sys.exit(1)
 
 
@@ -200,13 +210,15 @@ def command_show(args, show_username=True, show_notes=False):
         command_help()
         error_and_exit('$name is a required field')
 
-    cursor.execute('SELECT username, iv, password, note FROM passwords WHERE name = ? LIMIT 1', [name])
+    cursor.execute('SELECT username, iv, password, note, count FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
     if result:
         username = result[0]
         iv = result[1]
         cipher_pass = result[2]
         cipher_note = result[3]
+        count = result[4]
+        cursor.execute('UPDATE passwords SET count = ? WHERE name = ?', [count + 1, name])
 
         password = getpass.getpass()
         plaintext_password = decrypt(cipher_pass, password, iv)
@@ -252,19 +264,18 @@ def command_show(args, show_username=True, show_notes=False):
         else:
             sys.stdout.write(plaintext_password)
     else:
-        sys.stdout.write('"{0}" was not found.'.format(name))
+        sys.stderr.write('{!r} was not found.\n'.format(name))
         rows = search(name)
         if rows:
-            sys.stdout.write(' Maybe you meant:\n')
             for row in rows:
                 found_name = row[0]
-                sys.stdout.write('  {0}\n'.format(found_name))
-        sys.stdout.write('\nShould I make an entry? [y]: ')
-        should_add = get_input()
-        if should_add == '' or should_add == 'y':
+                if confirm('Did you mean {!r}?'.format(found_name), 'y'):
+                    return command_show([found_name])
+
+        if confirm('Should I make an entry?', 'y'):
             command_create([name])
         else:
-            error_and_exit('aborting'.format(name))
+            just_exit()
 COMMANDS['show'] = command_show
 
 def command_create(args):
@@ -319,7 +330,7 @@ def command_add(args, plaintext_password=None):
         error_and_exit('$name is a required field')
 
     if not plaintext_password:
-        sys.stderr.write('Enter the password for "{0}"\n'.format(name))
+        sys.stderr.write('Enter the password for {!r}\n'.format(name))
         plaintext_password = getpass.getpass('or leave blank for more options: ')
         if not plaintext_password:
             if confirm('Use clipboard?', 'y'):
@@ -349,13 +360,13 @@ def command_add(args, plaintext_password=None):
         cipher, iv = encrypt(plaintext_password, password)
 
         if username:
-            sys.stdout.write('Keep using {!r}: [Yn] '.format(username))
+            sys.stderr.write('Keep using {!r}: [Yn] '.format(username))
             keep_it = get_input()
             if keep_it.lower() == "n":
                 username = None
 
         if not username:
-            sys.stdout.write('Username: ')
+            sys.stderr.write('Username: ')
             username = get_input()
 
         cursor.execute('REPLACE INTO passwords (name, password, iv, username) VALUES (?, ?, ?, ?)', (name, cipher, iv, username))
@@ -393,17 +404,17 @@ def command_remove(args):
             pass
         cursor.execute('DELETE FROM passwords WHERE name = ?', [name])
     else:
-        error_and_exit('Password "{0}" was not found'.format(name))
+        error_and_exit('No entry for {!r}'.format(name))
 COMMANDS['r'] = command_remove
 COMMANDS['remove'] = command_remove
 
 
 def search(filter):
-    cursor.execute('SELECT name, username, note FROM passwords')
+    cursor.execute('SELECT name, username, note, count FROM passwords ORDER BY count DESC')
 
     rows = []
     for row in cursor.fetchall():
-        name, username, note = row
+        name, username, note, count = row
 
         if filter:
             try:
@@ -429,13 +440,13 @@ def command_list(args):
     name_max = 8
     username_max = 8
     for row in rows:
-        name, username, note = row
+        name, username, _, _ = row
         name_max = max(name_max, len(name))
         username_max = max(username_max, len(username))
 
-    sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username' + ' ' * (username_max - 8) + ' | note?\n')
-    sys.stdout.write('-' * name_max + '-+-' + '-' * username_max + '-+-------\n')
-    for (name, username, note) in rows:
+    sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username' + ' ' * (username_max - 8) + ' | note? | count\n')
+    sys.stdout.write('-' * name_max + '-+-' + '-' * username_max + '-+-------+-----\n')
+    for (name, username, note, count) in rows:
         sys.stdout.write(name)
         sys.stdout.write(' ' * (name_max - len(name)) + ' | ')
         if username:
@@ -445,7 +456,14 @@ def command_list(args):
             sys.stdout.write(' ' * username_max + ' |')
 
         if note:
-            sys.stdout.write(' (encrypted)')
+            sys.stdout.write('  YES ')
+        else:
+            sys.stdout.write('      ')
+
+        if count > 9999:
+            sys.stdout.write(' | 10k+')
+        else:
+            sys.stdout.write(' | %4d' % (count))
         sys.stdout.write("\n")
 COMMANDS['l'] = command_list
 COMMANDS['list'] = command_list
@@ -470,7 +488,7 @@ def command_merge(args):
         error_and_exit('$file is a required field')
 
     if not os.path.exists(file):
-        error_and_exit('Could not find {file}'.format(file=file))
+        error_and_exit('Could not find {!r}'.format(file))
 
     password = getpass.getpass('Password: ')
 
@@ -527,7 +545,7 @@ def command_backup(args):
         error_and_exit('$file is a required field')
 
     if os.path.exists(file):
-        error_and_exit('Backup file {file} already exists'.format(file=file))
+        error_and_exit('Backup file {!r} already exists'.format(file))
 
     import shutil
     shutil.copyfile(get_passwords_file(), file)
@@ -548,11 +566,11 @@ def command_user(args):
     cursor.execute('SELECT name FROM passwords WHERE name = ? LIMIT 1', [name])
     result = cursor.fetchone()
     if result:
-        sys.stdout.write('Username: ')
+        sys.stderr.write('Username: ')
         username = get_input()
         cursor.execute('UPDATE passwords SET username = ? WHERE name = ?', (username, name))
     else:
-        error_and_exit('"{0}" was not found'.format(name))
+        error_and_exit('No entry for {!r}'.format(name))
 COMMANDS['u'] = command_user
 COMMANDS['user'] = command_user
 
@@ -578,7 +596,7 @@ def command_note(args):
             password = getpass.getpass()
             plaintext_note = decrypt(cipher_pass, password, iv)
             sys.stdout.write(plaintext_note)
-            sys.stdout.write("\n")
+            sys.stderr.write("\n")
     else:
         error_and_exit('No entry for {!r}'.format(name))
 
@@ -597,7 +615,7 @@ def command_add_note(args):
         line = True
         prompt = 'New note: '
         while line:
-            sys.stdout.write(prompt)
+            sys.stderr.write(prompt)
             line = get_input()
             prompt = '........> '
             if line:
@@ -684,7 +702,7 @@ if __name__ == "__main__":
     except KeyError:
         cursor.close()
         conn.commit()
-        error_and_exit('Unknown command "{0}"'.format(command_name))
+        error_and_exit('Unknown command {!r}'.format(command_name))
 
     try:
         command(args)
