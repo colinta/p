@@ -171,6 +171,7 @@ def pb_prev():
     return _pb_prev
 
 def pb_set(content):
+    global _pb_prev
     sock = os.popen('pbcopy', 'w')
     sock.write(content)
     _pb_prev = content
