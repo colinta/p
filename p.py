@@ -15,6 +15,7 @@ set it using the `P_PASSWORDS_FILE` environment variable.
                      to quit)
 --pass, -p $name     Show the password for $name, don't show the username.
 --help, -h           Show this message.
+--rename $old $new   Rename an entry
 --add, -a $name      Add entry $name.  You will be prompted for the password.
                      Existing entries will be replaced
 --user, -u $name     Add a username to the entry $name.  You will be prompted
@@ -319,6 +320,25 @@ def command_generate(args):
 COMMANDS['g'] = command_generate
 COMMANDS['generate'] = command_generate
 
+def command_rename(args):
+    try:
+        old_name = args.pop(0)
+        new_name = args.pop(0)
+    except IndexError:
+        old_name = None
+        new_name = None
+
+    if not (old_name and new_name):
+        error_and_exit('$old_name $new_name are required fields')
+
+    cursor.execute('SELECT name FROM passwords WHERE name = ? LIMIT 1', [old_name])
+    result = cursor.fetchone()
+    if result:
+        cursor.execute('UPDATE passwords SET name = ? WHERE name = ? LIMIT 1', [new_name, old_name])
+        sys.stderr.write("Renamed {!r} to {!r}\n".format(old_name, new_name))
+    else:
+        error_and_exit('No entry for {!r}'.format(old_name))
+COMMANDS['rename'] = command_rename
 
 def command_add(args, plaintext_password=None):
     try:
