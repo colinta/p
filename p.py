@@ -465,7 +465,7 @@ def command_list(args):
         name_max = max(name_max, len(name))
         username_max = max(username_max, len(username))
 
-    sys.stdout.write('password' + ' ' * (name_max - 8) + ' | username' + ' ' * (username_max - 8) + ' | note? | count\n')
+    sys.stdout.write('name' + ' ' * (name_max - 4) + ' | username' + ' ' * (username_max - 8) + ' | note? | count\n')
     sys.stdout.write('-' * name_max + '-+-' + '-' * username_max + '-+-------+-----\n')
     for (name, username, note, count) in rows:
         sys.stdout.write(name)
