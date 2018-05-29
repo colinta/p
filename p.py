@@ -11,27 +11,22 @@ set it using the `P_PASSWORDS_FILE` environment variable.
 [--show] $name       Show the password for $name and the username if it's
                      available.  Default command.  If there is no entry with
                      this name, a password can be created (using --create)
---verbose, -v $name  Show the password for $name, username, and notes. (enter q
-                     to quit)
+--verbose, -v $name  Show the password for $name, username, and notes. (enter q to quit)
 --pass, -p $name     Show the password for $name, don't show the username.
 --help, -h           Show this message.
 --rename $old $new   Rename an entry
---add, -a $name      Add entry $name.  You will be prompted for the password.
-                     Existing entries will be replaced
---user, -u $name     Add a username to the entry $name.  You will be prompted
-                     for the username.
+--add, -a $name      Add entry $name.  You will be prompted for the password. Existing entries will be replaced
+--user, -u $name     Add a username to the entry $name.  You will be prompted for the username.
 --note $name         Shows the notes for the entry.
 --n $name            Add a note to the entry.
 --N $name            Clears the note for the entry.
---change, -c $name   Replaces an entry after copying the current password to the
-                     clipboard.
+--change, -c $name   Replaces an entry after copying the current password to the clipboard.
 --remove, -r $name   Removes an entry
 --list, l            Lists all the entry names (no passwords are shown)
 --list $filter       Lists entries that include the $filter
 --file, f            Show the password file being used
 --merge, -m [$file]  Merges entries from another p_password.sql store
---check              Tries to decrypt entries using the "Master" password. Any
-                     entries that fail are printed to the screen
+--check              Tries to decrypt entries using the "Master" password. Any entries that fail are printed to the screen.
 --backup, -b $file   Make a backup of the password store
 --generate, -g       Generate a password using mouseware
 --create, -c $name   Generate a password and save it to $name
