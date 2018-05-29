@@ -394,7 +394,7 @@ COMMANDS['add'] = command_add
 
 def command_change(args):
     command_show(args[:])
-    command_generate(args[:])
+    command_create(args[:])
 COMMANDS['c'] = command_change
 COMMANDS['change'] = command_change
 
