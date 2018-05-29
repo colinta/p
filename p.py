@@ -27,6 +27,7 @@ set it using the `P_PASSWORDS_FILE` environment variable.
 --file, f            Show the password file being used
 --merge, -m [$file]  Merges entries from another p_password.sql store
 --check              Tries to decrypt entries using the "Master" password. Any entries that fail are printed to the screen.
+--find               Find passwords that include a search term.
 --backup, -b $file   Make a backup of the password store
 --generate, -g       Generate a password using mouseware
 --create, -c $name   Generate a password and save it to $name
@@ -540,15 +541,30 @@ COMMANDS['merge'] = command_merge
 
 
 def command_check(args):
-    master = getpass.getpass('Master: ')
+    password = getpass.getpass('Master: ')
     cursor.execute('SELECT name, password, iv FROM passwords')
-    for (name, password, iv) in cursor.fetchall():
+    for (name, cipher_pass, iv) in cursor.fetchall():
         try:
-            decrypt(password, master, iv)
+            decrypt(cipher_pass, password, iv)
         except ValueError:
             print(name)
 
 COMMANDS['check'] = command_check
+
+def command_find(args):
+    find = getpass.getpass('Search: ')
+    password = getpass.getpass('Master: ')
+    cursor.execute('SELECT name, password, iv FROM passwords')
+    for (name, cipher_pass, iv) in cursor.fetchall():
+        try:
+            plaintext_password = decrypt(cipher_pass, password, iv)
+            if find in plaintext_password:
+                print(name)
+        except ValueError:
+            break
+
+COMMANDS['find'] = command_find
+
 
 def command_backup(args):
     try:
